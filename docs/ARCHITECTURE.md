@@ -1,8 +1,9 @@
 # System Architecture
+
 # AR SDLC Learning Media
 
-Version: 1.0  
-Status: Draft  
+Version: 1.0
+Status: Draft
 Author: Bayu Dani Kurniawan
 
 ---
@@ -597,39 +598,60 @@ App
 # 15. Folder Architecture
 
 ```
-src/
-
-app/
-
-admin/
-
-api/
-
-scan/
-
-components/
-
-ar/
-
-hooks/
-
-lib/
-
-services/
-
-db/
-
-types/
-
-utils/
-
-public/
-
-models/
-
-markers/
-
-audio/
+SDLC-AR/
+│
+├── app/
+│   ├── admin/
+│   │   ├── methods/
+│   │   └── steps/
+│   │
+│   ├── api/
+│   │   ├── methods/
+│   │   ├── steps/
+│   │   └── audio/
+│   │
+│   ├── scan/
+│   ├── layout.tsx
+│   └── page.tsx
+│
+├── ar/
+│   ├── core/
+│   ├── hooks/
+│   ├── interactions/
+│   ├── loaders/
+│   └── utils/
+│
+├── components/
+│   ├── ar/
+│   ├── audio/
+│   ├── layout/
+│   ├── modal/
+│   └── ui/
+│
+├── constants/
+├── db/
+├── docs/
+├── hooks/
+├── lib/
+├── public/
+│   ├── audio/
+│   ├── images/
+│   ├── markers/
+│   └── models/
+│
+├── schemas/
+├── services/
+├── stores/
+├── types/
+├── utils/
+│
+├── AGENTS.md
+├── CLAUDE.md
+├── README.md
+├── PRD.md
+├── ARCHITECTURE.md
+├── DATABASE.md
+└── package.json
 ```
 
 ---
@@ -772,17 +794,17 @@ Keduanya tidak saling bergantung.
 
 # 19. Architecture Decisions
 
-| Decision | Reason |
-|-----------|--------|
-| Next.js | Fullstack framework |
-| Turso | Ringan dan mudah dideploy |
-| Drizzle ORM | Type-safe ORM |
-| MindAR | Open source image tracking |
-| React Three Fiber | Integrasi terbaik dengan React |
-| Static GLB | Loading lebih cepat |
-| meshName Mapping | Menghubungkan objek 3D dengan database |
-| Browser TTS Fallback | Audio tetap tersedia meskipun MP3 belum diunggah |
-| Single Fetch per Method | Mengurangi request dan meningkatkan performa |
+| Decision                | Reason                                           |
+| ----------------------- | ------------------------------------------------ |
+| Next.js                 | Fullstack framework                              |
+| Turso                   | Ringan dan mudah dideploy                        |
+| Drizzle ORM             | Type-safe ORM                                    |
+| MindAR                  | Open source image tracking                       |
+| React Three Fiber       | Integrasi terbaik dengan React                   |
+| Static GLB              | Loading lebih cepat                              |
+| meshName Mapping        | Menghubungkan objek 3D dengan database           |
+| Browser TTS Fallback    | Audio tetap tersedia meskipun MP3 belum diunggah |
+| Single Fetch per Method | Mengurangi request dan meningkatkan performa     |
 
 ---
 
