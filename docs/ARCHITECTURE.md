@@ -602,13 +602,25 @@ SDLC-AR/
 │
 ├── app/
 │   ├── admin/
-│   │   ├── methods/
-│   │   └── steps/
-│   │
-│   ├── api/
+│   │   ├── assets/
+│   │   ├── categories/
+│   │   ├── login/
+│   │   ├── materials/
 │   │   ├── methods/
 │   │   ├── steps/
-│   │   └── audio/
+│   │   ├── users/
+│   │   ├── layout.tsx
+│   │   └── page.tsx
+│   │
+│   ├── api/
+│   │   ├── assets/[id]/
+│   │   ├── auth/[...nextauth]/
+│   │   ├── categories/[id]/
+│   │   ├── dashboard/stats/
+│   │   ├── materials/[id]/
+│   │   ├── methods/[id]/
+│   │   ├── steps/[id]/
+│   │   └── users/[id]/
 │   │
 │   ├── scan/
 │   ├── layout.tsx
@@ -625,14 +637,35 @@ SDLC-AR/
 │   ├── ar/
 │   ├── audio/
 │   ├── layout/
+│   │   ├── AdminLayout.tsx
+│   │   ├── AdminNavbar.tsx
+│   │   └── AdminSidebar.tsx
 │   ├── modal/
-│   └── ui/
+│   └── ui/ (shadcn components)
 │
 ├── constants/
 ├── db/
+│   ├── migrations/
+│   ├── schema/
+│   │   ├── auth.ts
+│   │   ├── assets.ts
+│   │   ├── audios.ts
+│   │   ├── categories.ts
+│   │   ├── materials.ts
+│   │   ├── methods.ts
+│   │   ├── quizzes.ts
+│   │   ├── relations.ts
+│   │   ├── steps.ts
+│   │   └── index.ts
+│   ├── index.ts
+│   ├── migrate.ts
+│   └── seed.ts
+│
 ├── docs/
 ├── hooks/
 ├── lib/
+│   ├── auth.ts
+│   └── utils.ts
 ├── public/
 │   ├── audio/
 │   ├── images/
@@ -640,18 +673,21 @@ SDLC-AR/
 │   └── models/
 │
 ├── schemas/
+│   └── index.ts
 ├── services/
 ├── stores/
 ├── types/
+│   └── next-auth.d.ts
 ├── utils/
 │
+├── .env.local
+├── .env.example
+├── drizzle.config.ts
+├── middleware.ts
 ├── AGENTS.md
-├── CLAUDE.md
 ├── README.md
-├── PRD.md
-├── ARCHITECTURE.md
-├── DATABASE.md
-└── package.json
+├── package.json
+└── tsconfig.json
 ```
 
 ---

@@ -3,7 +3,7 @@
 
 # AR SDLC Learning Media
 
-Version: 1.0
+Version: 2.0
 
 Status: Active Development
 
@@ -25,7 +25,7 @@ Prioritas utama adalah membangun fondasi sistem (database, dashboard admin, dan 
 
 # Phase 1 — Project Foundation
 
-Status: 🔄 In Progress
+Status: ✅ Complete
 
 Objective
 
@@ -37,12 +37,12 @@ Tasks
 - Install Dependencies
 - Configure Tailwind CSS
 - Configure ESLint
-- Configure Prettier
 - Configure Drizzle ORM
-- Configure Turso Database
+- Configure SQLite Database (Turso-compatible)
 - Create Project Folder Structure
 - Create Documentation
 - Configure Environment Variables
+- Setup shadcn/ui
 
 Deliverables
 
@@ -54,7 +54,7 @@ Deliverables
 
 # Phase 2 — Database
 
-Status: ⏳ Planned
+Status: ✅ Complete
 
 Objective
 
@@ -69,18 +69,28 @@ Tasks
 
 Tables
 
+- Users (Admin authentication)
+- Sessions
+- Accounts
+- Categories
 - SDLC Methods
 - Method Steps
+- Learning Materials
+- 3D Assets
+- Audios
+- Quizzes (preparation only)
 
 Deliverables
 
 - Database siap digunakan
+- 10 tables dengan relasi yang benar
+- Seed data untuk 3 metode SDLC
 
 ---
 
 # Phase 3 — Admin Panel
 
-Status: ⏳ Planned
+Status: ✅ Complete
 
 Objective
 
@@ -88,12 +98,29 @@ Membangun Content Management System (CMS) untuk mengelola materi pembelajaran.
 
 Features
 
-- Dashboard
-- Login Admin
+- Dashboard dengan statistik
+- Login Admin (NextAuth v5)
+- Sidebar navigation
+- CRUD Categories
 - CRUD SDLC Methods
 - CRUD Method Steps
-- Upload Audio
-- Preview Content
+- CRUD Learning Materials
+- CRUD 3D Assets
+- User Management
+- Zod validation
+- Toast notifications
+- Responsive design
+
+Pages
+
+- /admin/login
+- /admin (dashboard)
+- /admin/categories
+- /admin/methods
+- /admin/steps
+- /admin/materials
+- /admin/assets
+- /admin/users
 
 Deliverables
 
@@ -103,7 +130,7 @@ Deliverables
 
 # Phase 4 — REST API
 
-Status: ⏳ Planned
+Status: ✅ Complete
 
 Objective
 
@@ -114,30 +141,80 @@ Endpoints
 Methods
 
 ```
-GET /api/methods
-GET /api/methods/:id
+GET    /api/methods
+POST   /api/methods
+GET    /api/methods/:id
+PUT    /api/methods/:id
+DELETE /api/methods/:id
 ```
 
 Steps
 
 ```
-GET /api/steps
-GET /api/steps/:id
-POST /api/steps
-PUT /api/steps/:id
+GET    /api/steps
+POST   /api/steps
+GET    /api/steps/:id
+PUT    /api/steps/:id
 DELETE /api/steps/:id
 ```
 
-Audio
+Categories
 
 ```
-POST /api/audio
-DELETE /api/audio/:id
+GET    /api/categories
+POST   /api/categories
+GET    /api/categories/:id
+PUT    /api/categories/:id
+DELETE /api/categories/:id
+```
+
+Materials
+
+```
+GET    /api/materials
+POST   /api/materials
+GET    /api/materials/:id
+PUT    /api/materials/:id
+DELETE /api/materials/:id
+```
+
+Assets
+
+```
+GET    /api/assets
+POST   /api/assets
+GET    /api/assets/:id
+PUT    /api/assets/:id
+DELETE /api/assets/:id
+```
+
+Users
+
+```
+GET    /api/users
+POST   /api/users
+DELETE /api/users/:id
+```
+
+Dashboard
+
+```
+GET    /api/dashboard/stats
+```
+
+Auth
+
+```
+POST   /api/auth/callback/credentials
+GET    /api/auth/session
+GET    /api/auth/signout
 ```
 
 Deliverables
 
 - API siap dikonsumsi frontend
+- Zod validation pada semua endpoint
+- Proper error handling
 
 ---
 
@@ -232,8 +309,8 @@ Status: ⏳ Planned
 
 Tasks
 
-- Deploy Database
-- Deploy Next.js
+- Deploy Database (Turso)
+- Deploy Next.js (Vercel)
 - Configure Environment Variables
 - Configure Domain
 - Final Testing
@@ -304,19 +381,17 @@ Features
 
 # Milestones
 
-
-
 Milestone 1
 ✅ Setup Project
 
 Milestone 2
-⬜ Database
+✅ Database
 
 Milestone 3
-⬜ Admin Panel
+✅ Admin Panel
 
 Milestone 4
-⬜ REST API
+✅ REST API
 
 Milestone 5
 ⬜ AR Engine
@@ -325,48 +400,29 @@ Milestone 6
 ⬜ Learning Module
 
 Milestone 7
-⬜ Deployment
+⬜ Testing
 
 Milestone 8
-⬜ AI Assistant
+⬜ Deployment
 
 Milestone 9
+⬜ AI Assistant
+
+Milestone 10
 ⬜ Quiz
 
 | Milestone         | Status |
 | ----------------- | ------ |
-| Project Setup     | 🔄     |
-| Database          | ⏳     |
-| Admin Panel       | ⏳     |
-| REST API          | ⏳     |
+| Project Setup     | ✅     |
+| Database          | ✅     |
+| Admin Panel       | ✅     |
+| REST API          | ✅     |
 | WebAR Integration | ⏳     |
 | Learning Module   | ⏳     |
 | Testing           | ⏳     |
 | Deployment        | ⏳     |
 | AI Assistant      | 💡     |
 | Quiz              | 💡     |
-
----
-
-# Current Sprint
-
-Current Focus
-
-✅ Configure Turso Database
-
-⬜ Create Drizzle Schema
-
-⬜ Database Migration
-
-⬜ Seed Initial Data
-
-⬜ Build Admin Dashboard
-
-⬜ CRUD Methods
-
-⬜ CRUD Steps
-
-⬜ Upload Audio
 
 ---
 

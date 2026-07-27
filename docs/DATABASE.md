@@ -3,11 +3,13 @@
 
 # AR SDLC Learning Media
 
-Version: 1.0
+Version: 2.0
 
-Status: Draft
+Status: Implemented
 
 Author: Bayu Dani Kurniawan
+
+Last Updated: July 2026
 
 ---
 
@@ -21,10 +23,14 @@ Model GLB disimpan sebagai aset statis pada aplikasi.
 
 Database hanya menyimpan informasi yang berkaitan dengan:
 
+- Admin users & authentication
+- Kategori pembelajaran
 - Metode SDLC
 - Tahapan
-- Materi
-- Audio
+- Materi pembelajaran
+- Audio (Cloudinary)
+- 3D Asset metadata
+- Quiz (preparation only)
 
 Pendekatan ini membuat ukuran database tetap kecil serta mempercepat proses rendering model AR.
 
@@ -32,13 +38,21 @@ Pendekatan ini membuat ukuran database tetap kecil serta mempercepat proses rend
 
 # 2. Database Technology
 
-Database
+Database Development
+
+- SQLite (local file)
+
+Database Production
 
 - Turso SQLite
 
 ORM
 
 - Drizzle ORM
+
+Driver
+
+- @libsql/client
 
 ---
 
@@ -58,7 +72,6 @@ Lokasi:
 
 ```
 public/models/
-
 public/markers/
 ```
 
@@ -68,11 +81,14 @@ public/markers/
 
 Disimpan di database.
 
+- Admin users
+- Kategori
 - Nama metode
 - Deskripsi
 - Tahapan
-- Materi
-- Audio
+- Detail materi
+- Audio URL
+- 3D asset metadata
 
 ---
 
@@ -84,9 +100,7 @@ Contoh
 
 ```
 WF_REQUIREMENTS
-
 WF_DESIGN
-
 WF_IMPLEMENTATION
 ```
 
@@ -94,86 +108,180 @@ Nama tersebut menjadi penghubung antara objek 3D dan data pembelajaran.
 
 ---
 
+## Portable Design
+
+Schema dirancang agar portabel antara SQLite dan Turso:
+
+- Menggunakan text PK (UUID) untuk portabilitas
+- Menggunakan integer timestamps untuk kompatibilitas
+- Tidak menggunakan fitur SQLite-specific yang tidak ada di Turso
+- File local.db untuk development, Turso untuk production
+
+---
+
 # 4. Entity Relationship Diagram
 
-```mermaid
-erDiagram
+```
+users ||--o{ sessions : has
+users ||--o{ accounts : has
 
-SDLC_METHODS ||--o{ METHOD_STEPS : contains
+categories ||--o{ sdlc_methods : contains
 
-METHOD_STEPS ||--o| AUDIOS : has
+sdlc_methods ||--o{ method_steps : has
+sdlc_methods ||--o{ assets_3d : has
 
-METHOD_STEPS ||--o{ QUIZZES : future
+method_steps ||--o{ learning_materials : has
+method_steps ||--o{ audios : has
+method_steps ||--o{ quizzes : has
 ```
 
 ---
 
 # 5. Database Schema
 
-## SDLC_METHODS
+## users
+
+Menyimpan informasi admin accounts.
+
+| Field        | Type     | Description              |
+| ------------ | -------- | ------------------------ |
+| id           | text PK  | UUID                     |
+| name         | text     | Nama lengkap             |
+| email        | text     | Email (unique)           |
+| password_hash| text     | Bcrypt hashed password   |
+| role         | text     | admin / super_admin      |
+| created_at   | integer  | Timestamp (ms)           |
+| updated_at   | integer  | Timestamp (ms)           |
+
+---
+
+## sessions
+
+Menyimpan session data untuk authentication.
+
+| Field         | Type    | Description            |
+| ------------- | ------- | ---------------------- |
+| id            | text PK | UUID                   |
+| user_id       | text FK | References users.id    |
+| expires_at    | integer | Timestamp (ms)         |
+| session_token | text    | Unique session token   |
+
+---
+
+## accounts
+
+Menyimpan OAuth account data (prepared for future).
+
+| Field               | Type    | Description            |
+| ------------------- | ------- | ---------------------- |
+| id                  | text PK | UUID                   |
+| user_id             | text FK | References users.id    |
+| type                | text    | Account type           |
+| provider            | text    | OAuth provider         |
+| provider_account_id | text    | Provider account ID    |
+
+---
+
+## categories
+
+Menyimpan kategori pembelajaran.
+
+| Field      | Type    | Description             |
+| ---------- | ------- | ----------------------- |
+| id         | text PK | UUID                    |
+| name       | text    | Nama kategori (unique)  |
+| description| text    | Deskripsi kategori      |
+| slug       | text    | URL slug (unique)       |
+| sort_order | integer | Urutan tampilan         |
+| created_at | integer | Timestamp (ms)          |
+| updated_at | integer | Timestamp (ms)          |
+
+---
+
+## sdlc_methods
 
 Menyimpan informasi metode SDLC.
 
-| Field       | Type      | Description             |
-| ----------- | --------- | ----------------------- |
-| id          | text (PK) | agile / waterfall / rad |
-| name        | text      | Nama metode             |
-| description | text      | Penjelasan singkat      |
-| model_path  | text      | Lokasi file GLB         |
-| marker_path | text      | Lokasi marker           |
-| created_at  | timestamp | Created time            |
-| updated_at  | timestamp | Updated time            |
+| Field       | Type    | Description                      |
+| ----------- | ------- | -------------------------------- |
+| id          | text PK | UUID                             |
+| name        | text    | Nama metode                      |
+| slug        | text    | URL slug (unique)                |
+| description | text    | Deskripsi singkat                |
+| model_path  | text    | Lokasi file GLB                  |
+| marker_path | text    | Lokasi marker                    |
+| category_id | text FK | References categories.id (nullable) |
+| status      | text    | draft / published / archived     |
+| sort_order  | integer | Urutan tampilan                  |
+| created_at  | integer | Timestamp (ms)                   |
+| updated_at  | integer | Timestamp (ms)                   |
 
 ---
 
-Contoh
-
-| id        | name      |
-| --------- | --------- |
-| waterfall | Waterfall |
-| agile     | Agile     |
-| rad       | RAD       |
-
----
-
-## METHOD_STEPS
+## method_steps
 
 Menyimpan seluruh tahapan.
 
-| Field       | Type        |
-| ----------- | ----------- |
-| id          | integer PK  |
-| method_id   | FK          |
-| mesh_name   | text UNIQUE |
-| title       | text        |
-| description | text        |
-| step_order  | integer     |
-| created_at  | timestamp   |
-| updated_at  | timestamp   |
+| Field       | Type    | Description              |
+| ----------- | ------- | ------------------------ |
+| id          | text PK | UUID                     |
+| method_id   | text FK | References sdlc_methods.id |
+| mesh_name   | text    | Unique, must match 3D mesh |
+| title       | text    | Judul tahapan            |
+| description | text    | Penjelasan tahapan       |
+| step_order  | integer | Urutan tahapan           |
+| created_at  | integer | Timestamp (ms)           |
+| updated_at  | integer | Timestamp (ms)           |
 
 ---
 
-Contoh
+## learning_materials
 
-| mesh_name         |
-| ----------------- |
-| WF_REQUIREMENTS   |
-| WF_DESIGN         |
-| WF_IMPLEMENTATION |
+Menyimpan konten pembelajaran detail.
+
+| Field        | Type    | Description                |
+| ------------ | ------- | -------------------------- |
+| id           | text PK | UUID                       |
+| step_id      | text FK | References method_steps.id |
+| title        | text    | Judul materi               |
+| content      | text    | Konten pembelajaran        |
+| thumbnail_url| text    | URL thumbnail (nullable)   |
+| status       | text    | draft / published          |
+| created_at   | integer | Timestamp (ms)             |
+| updated_at   | integer | Timestamp (ms)             |
 
 ---
 
-## AUDIOS
+## assets_3d
 
-Menyimpan file audio.
+Menyimpan metadata 3D model.
 
-| Field      | Type       |
-| ---------- | ---------- |
-| id         | integer PK |
-| step_id    | FK         |
-| audio_url  | text       |
-| duration   | integer    |
-| created_at | timestamp  |
+| Field       | Type    | Description                      |
+| ----------- | ------- | -------------------------------- |
+| id          | text PK | UUID                             |
+| method_id   | text FK | References sdlc_methods.id       |
+| name        | text    | Nama aset                        |
+| description | text    | Deskripsi aset                   |
+| file_path   | text    | Lokasi file GLB/GLTF             |
+| file_format | text    | glb / gltf                       |
+| file_size   | integer | Ukuran file dalam bytes (nullable)|
+| version     | text    | Versi aset                       |
+| created_at  | integer | Timestamp (ms)                   |
+| updated_at  | integer | Timestamp (ms)                   |
+
+---
+
+## audios
+
+Menyimpan metadata file audio.
+
+| Field      | Type    | Description                |
+| ---------- | ------- | -------------------------- |
+| id         | text PK | UUID                       |
+| step_id    | text FK | References method_steps.id |
+| audio_url  | text    | URL audio (Cloudinary)     |
+| duration   | integer | Durasi dalam detik         |
+| created_at | integer | Timestamp (ms)             |
 
 Audio bersifat opsional.
 
@@ -181,137 +289,232 @@ Jika kosong maka Browser Text-to-Speech digunakan.
 
 ---
 
-# 6. Future Tables
+## quizzes
 
-## QUIZZES
+Menyimpan data quiz (prepared for future).
 
-Digunakan pada versi berikutnya.
-
-| Field          |
-| -------------- |
-| id             |
-| step_id        |
-| question       |
-| option_a       |
-| option_b       |
-| option_c       |
-| option_d       |
-| correct_answer |
-
----
-
-## CHAT_HISTORY
-
-Future.
-
-| Field      |
-| ---------- |
-| id         |
-| question   |
-| answer     |
-| created_at |
+| Field           | Type    | Description                |
+| --------------- | ------- | -------------------------- |
+| id              | text PK | UUID                       |
+| step_id         | text FK | References method_steps.id |
+| question        | text    | Pertanyaan                 |
+| option_a        | text    | Opsi A                     |
+| option_b        | text    | Opsi B                     |
+| option_c        | text    | Opsi C                     |
+| option_d        | text    | Opsi D                     |
+| correct_answer  | text    | A / B / C / D              |
+| created_at      | integer | Timestamp (ms)             |
 
 ---
 
-# 7. Relationships
+# 6. Relationships
+
+```
+User
+│
+├── Session 1
+├── Session 2
+└── Session N
+```
+
+Setiap User memiliki banyak Session.
+
+---
+
+```
+Category
+│
+├── Method 1
+├── Method 2
+└── Method N
+```
+
+Setiap Category memiliki banyak Method.
+
+---
 
 ```
 Method
-
 │
-
 ├── Step 1
-
 ├── Step 2
-
-├── Step 3
-
-└── Step N
+├── Step N
+│
+├── Asset 1
+└── Asset N
 ```
 
-Setiap Method memiliki banyak Step.
+Setiap Method memiliki banyak Step dan Asset.
 
 ---
 
 ```
 Step
-
 │
-
-└── Audio
+├── Material 1
+├── Material N
+│
+└── Audio (max 1)
 ```
 
-Setiap Step maksimal memiliki satu Audio.
+Setiap Step memiliki banyak Material dan maksimal satu Audio.
 
 ---
 
-```
-Step
+# 7. Migration & Seed
 
-│
+Generate migration:
 
-├── Quiz 1
-
-├── Quiz 2
-
-└── Quiz N
+```bash
+npx drizzle-kit generate
 ```
 
-Quiz merupakan fitur pengembangan.
+Push schema:
+
+```bash
+npx drizzle-kit push
+```
+
+Run seed:
+
+```bash
+npx tsx db/seed.ts
+```
 
 ---
 
-# 8. Data Flow
+# 8. Default Data
 
-Saat user melakukan scan.
+Seed menghasilkan:
+
+1 Admin User
+
+- Email: admin@sdlc-ar.com
+- Password: admin123
+- Role: super_admin
+
+1 Category
+
+- Software Engineering
+
+3 Methods
+
+- Waterfall (6 steps)
+- Agile (4 steps)
+- RAD (4 steps)
+
+---
+
+# 9. Request Flow
+
+Saat user membuka halaman scan.
 
 ```
-Marker
+GET
+/api/methods/:id
+```
 
-↓
+Response
 
+```
 Method
-
-↓
-
-Load Model
-
-↓
-
-GET Method + Steps
-
-↓
-
-React State
++
+All Steps
 ```
 
-Ketika user memilih salah satu tahapan.
+Data tersebut disimpan pada React State.
+
+Saat user memilih salah satu tahapan.
 
 ```
-Mesh Click
-
+Mesh Name
 ↓
-
-mesh.name
-
+Search React State
 ↓
-
-Find Step
-
-↓
-
 Popup
-
-↓
-
-Audio
 ```
 
-Tidak ada request database kedua.
+Tidak perlu melakukan request ulang.
 
 ---
 
-# 9. Mesh Mapping
+# 10. API Endpoints
+
+Methods
+
+```
+GET    /api/methods
+POST   /api/methods
+GET    /api/methods/:id
+PUT    /api/methods/:id
+DELETE /api/methods/:id
+```
+
+Steps
+
+```
+GET    /api/steps
+POST   /api/steps
+GET    /api/steps/:id
+PUT    /api/steps/:id
+DELETE /api/steps/:id
+```
+
+Categories
+
+```
+GET    /api/categories
+POST   /api/categories
+GET    /api/categories/:id
+PUT    /api/categories/:id
+DELETE /api/categories/:id
+```
+
+Materials
+
+```
+GET    /api/materials
+POST   /api/materials
+GET    /api/materials/:id
+PUT    /api/materials/:id
+DELETE /api/materials/:id
+```
+
+Assets
+
+```
+GET    /api/assets
+POST   /api/assets
+GET    /api/assets/:id
+PUT    /api/assets/:id
+DELETE /api/assets/:id
+```
+
+Users
+
+```
+GET    /api/users
+POST   /api/users
+DELETE /api/users/:id
+```
+
+Dashboard
+
+```
+GET    /api/dashboard/stats
+```
+
+Auth
+
+```
+POST   /api/auth/callback/credentials
+GET    /api/auth/session
+GET    /api/auth/signout
+```
+
+---
+
+# 11. Mesh Mapping
 
 Contoh mapping.
 
@@ -348,83 +551,10 @@ RAD
 
 ---
 
-# 10. Request Flow
+# 12. Database Optimization
 
-```mermaid
-sequenceDiagram
-
-participant User
-
-participant React
-
-participant API
-
-participant Database
-
-User->>React: Scan Marker
-
-React->>API: GET Method
-
-API->>Database: Query
-
-Database-->>API: Method + Steps
-
-API-->>React: JSON
-
-User->>React: Click Mesh
-
-React->>React: Find mesh_name
-
-React-->>User: Popup
-```
-
----
-
-# 11. Business Rules
-
-- Setiap metode memiliki satu model GLB.
-- Setiap metode memiliki satu marker.
-- Setiap metode memiliki banyak tahapan.
-- Setiap tahapan memiliki mesh_name yang unik.
-- mesh_name harus sama dengan nama mesh pada Blender.
-- Admin tidak dapat mengubah mesh_name.
-- Admin hanya dapat mengubah konten pembelajaran.
-- Audio bersifat opsional.
-- Jika audio kosong maka Browser Speech Synthesis digunakan.
-
----
-
-# 12. Example JSON
-
-Method
-
-```json
-{
-  "id": "waterfall",
-  "name": "Waterfall",
-  "modelPath": "/models/waterfall.glb",
-  "markerPath": "/markers/waterfall.png"
-}
-```
-
-Step
-
-```json
-{
-  "id": 1,
-  "methodId": "waterfall",
-  "meshName": "WF_REQUIREMENTS",
-  "title": "Requirements",
-  "description": "Tahapan untuk mengumpulkan kebutuhan sistem.",
-  "stepOrder": 1
-}
-```
-
----
-
-# 13. Database Optimization
-
-- Menggunakan Turso SQLite.
+- Menggunakan SQLite untuk development.
+- Menggunakan Turso untuk production.
 - Satu request mengambil seluruh tahapan berdasarkan metode.
 - Detail tahapan disimpan pada React State.
 - Tidak melakukan query setiap kali mesh diklik.
@@ -432,7 +562,7 @@ Step
 
 ---
 
-# 14. Summary
+# 13. Summary
 
 Database menggunakan pendekatan **Static Asset + Dynamic Content**.
 
