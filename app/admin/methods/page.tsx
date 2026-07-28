@@ -9,15 +9,5 @@ export default async function MethodsPage() {
     .from(sdlcMethods)
     .orderBy(asc(sdlcMethods.sortOrder));
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">SDLC Methods</h2>
-        <p className="text-muted-foreground">
-          Manage your SDLC learning methods and their 3D model references.
-        </p>
-      </div>
-      <MethodsTable initialData={allMethods} />
-    </div>
-  );
+  return <MethodsTable initialData={allMethods} />;
 }

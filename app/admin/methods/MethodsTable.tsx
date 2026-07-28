@@ -1,8 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import {
+  BookOpen,
+  Plus,
+  Pencil,
+  Trash2,
+  Box,
+  ArrowUpDown,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -21,10 +27,18 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import {
+  PageHeader,
+  StatCard,
+  DeleteDialog,
+  StatusBadge,
+  getMethodStatusVariant,
+  SearchInput,
+  EmptyState,
+  FormField,
+} from "@/components/admin";
 
 interface Method {
   id: string;
@@ -33,21 +47,28 @@ interface Method {
   description: string | null;
   modelPath: string;
   markerPath: string;
-  categoryId: string | null;
   status: string;
   sortOrder: number;
   createdAt: Date;
   updatedAt: Date;
 }
 
+async function fetchMethods(): Promise<Method[]> {
+  const res = await fetch("/api/methods");
+  if (!res.ok) throw new Error("Failed to fetch");
+  return res.json();
+}
+
 export function MethodsTable({ initialData }: { initialData: Method[] }) {
-  const router = useRouter();
-  const [methods] = useState(initialData);
+  const [methods, setMethods] = useState(initialData);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editingMethod, setEditingMethod] = useState<Method | null>(null);
   const [deletingMethod, setDeletingMethod] = useState<Method | null>(null);
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [search, setSearch] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
 
   const [form, setForm] = useState({
     name: "",
@@ -55,7 +76,7 @@ export function MethodsTable({ initialData }: { initialData: Method[] }) {
     slug: "",
     modelPath: "",
     markerPath: "",
-    status: "draft" as string,
+    status: "draft",
     sortOrder: 0,
   });
 
@@ -70,6 +91,7 @@ export function MethodsTable({ initialData }: { initialData: Method[] }) {
       status: "draft",
       sortOrder: 0,
     });
+    setErrors({});
     setDialogOpen(true);
   }
 
@@ -84,6 +106,7 @@ export function MethodsTable({ initialData }: { initialData: Method[] }) {
       status: method.status,
       sortOrder: method.sortOrder,
     });
+    setErrors({});
     setDialogOpen(true);
   }
 
@@ -94,7 +117,36 @@ export function MethodsTable({ initialData }: { initialData: Method[] }) {
       .replace(/(^-|-$)/g, "");
   }
 
+  function validate(): boolean {
+    const newErrors: Record<string, string> = {};
+    if (!form.name.trim()) newErrors.name = "Name is required";
+    if (!form.slug.trim()) newErrors.slug = "Slug is required";
+    else if (!/^[a-z0-9-]+$/.test(form.slug))
+      newErrors.slug =
+        "Slug must contain only lowercase letters, numbers, and hyphens";
+    if (!form.modelPath.trim()) newErrors.modelPath = "Model path is required";
+    if (!form.markerPath.trim())
+      newErrors.markerPath = "Marker path is required";
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  }
+
+  const filtered = methods.filter((m) => {
+    if (filterStatus !== "all" && m.status !== filterStatus) return false;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      return (
+        m.name.toLowerCase().includes(q) || m.slug.toLowerCase().includes(q)
+      );
+    }
+    return true;
+  });
+
+  const publishedCount = methods.filter((m) => m.status === "published").length;
+  const draftCount = methods.filter((m) => m.status === "draft").length;
+
   async function handleSave() {
+    if (!validate()) return;
     setLoading(true);
     try {
       const url = editingMethod
@@ -106,9 +158,13 @@ export function MethodsTable({ initialData }: { initialData: Method[] }) {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...form,
+          name: form.name.trim(),
+          slug: form.slug.trim(),
+          description: form.description.trim() || null,
+          modelPath: form.modelPath.trim(),
+          markerPath: form.markerPath.trim(),
+          status: form.status,
           sortOrder: Number(form.sortOrder),
-          categoryId: null,
         }),
       });
 
@@ -117,11 +173,14 @@ export function MethodsTable({ initialData }: { initialData: Method[] }) {
         throw new Error(data.error || "Failed to save method");
       }
 
+      const updated = await fetchMethods();
+      setMethods(updated);
       toast.success(editingMethod ? "Method updated" : "Method created");
       setDialogOpen(false);
-      router.refresh();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to save");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to save"
+      );
     } finally {
       setLoading(false);
     }
@@ -134,15 +193,13 @@ export function MethodsTable({ initialData }: { initialData: Method[] }) {
       const response = await fetch(`/api/methods/${deletingMethod.id}`, {
         method: "DELETE",
       });
+      if (!response.ok) throw new Error("Failed to delete");
 
-      if (!response.ok) {
-        throw new Error("Failed to delete method");
-      }
-
+      const updated = await fetchMethods();
+      setMethods(updated);
       toast.success("Method deleted");
       setDeleteDialogOpen(false);
       setDeletingMethod(null);
-      router.refresh();
     } catch {
       toast.error("Failed to delete method");
     } finally {
@@ -150,91 +207,202 @@ export function MethodsTable({ initialData }: { initialData: Method[] }) {
     }
   }
 
-  function getStatusBadge(status: string) {
-    switch (status) {
-      case "published":
-        return (
-          <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
-            Published
-          </Badge>
-        );
-      case "draft":
-        return (
-          <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 hover:bg-yellow-100">
-            Draft
-          </Badge>
-        );
-      case "archived":
-        return (
-          <Badge variant="secondary" className="bg-gray-100 text-gray-700 hover:bg-gray-100">
-            Archived
-          </Badge>
-        );
-      default:
-        return <Badge variant="secondary">{status}</Badge>;
-    }
-  }
-
   return (
-    <>
-      <div className="flex items-center justify-end">
-        <Button onClick={openCreate} className="flex items-center gap-2">
-          <Plus className="h-4 w-4" />
-          Add Method
-        </Button>
+    <div className="space-y-6">
+      <PageHeader
+        title="Methods"
+        description="Manage SDLC methods and their related 3D models."
+        icon={BookOpen}
+        actions={
+          <Button onClick={openCreate} size="sm">
+            <Plus className="mr-2 h-4 w-4" />
+            Add Method
+          </Button>
+        }
+      />
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard
+          title="Total Methods"
+          value={methods.length}
+          icon={BookOpen}
+          iconColor="text-blue-600"
+          iconBg="bg-blue-50"
+        />
+        <StatCard
+          title="Published"
+          value={publishedCount}
+          icon={BookOpen}
+          iconColor="text-emerald-600"
+          iconBg="bg-emerald-50"
+        />
+        <StatCard
+          title="Drafts"
+          value={draftCount}
+          icon={BookOpen}
+          iconColor="text-amber-600"
+          iconBg="bg-amber-50"
+        />
       </div>
 
-      <div className="rounded-lg border bg-card">
+      {/* Table Card */}
+      <div className="rounded-2xl border border-border/60 bg-white shadow-sm">
+        {/* Toolbar */}
+        <div className="flex flex-col gap-3 border-b border-border/50 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <SearchInput
+              value={search}
+              onChange={setSearch}
+              placeholder="Search methods..."
+              className="w-full sm:w-72"
+            />
+            <div className="flex items-center gap-2">
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="h-9 rounded-lg border border-border/60 bg-white px-3 text-sm text-foreground"
+              >
+                <option value="all">All Status</option>
+                <option value="published">Published</option>
+                <option value="draft">Draft</option>
+                <option value="archived">Archived</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Table */}
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Slug</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Model</TableHead>
-              <TableHead>Order</TableHead>
-              <TableHead className="w-24">Actions</TableHead>
+            <TableRow className="border-b border-border/50 hover:bg-transparent">
+              <TableHead className="h-10 px-6 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Name
+              </TableHead>
+              <TableHead className="h-10 px-6 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Slug
+              </TableHead>
+              <TableHead className="h-10 px-6 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Status
+              </TableHead>
+              <TableHead className="h-10 px-6 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Model
+              </TableHead>
+              <TableHead className="h-10 px-6 text-xs font-medium uppercase tracking-wide text-muted-foreground w-20">
+                <div className="flex items-center gap-1">
+                  <ArrowUpDown className="h-3 w-3" />
+                  Order
+                </div>
+              </TableHead>
+              <TableHead className="h-10 px-6 text-xs font-medium uppercase tracking-wide text-muted-foreground w-24 text-right">
+                Actions
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {methods.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                  No methods found. Click &quot;Add Method&quot; to create one.
+            {filtered.length === 0 ? (
+              <TableRow className="border-none hover:bg-transparent">
+                <TableCell colSpan={6}>
+                  <EmptyState
+                    title="No methods found"
+                    description={
+                      search
+                        ? "Try adjusting your search or filter criteria."
+                        : "Get started by creating your first SDLC method."
+                    }
+                    icon={BookOpen}
+                    action={
+                      !search ? (
+                        <Button onClick={openCreate} size="sm">
+                          <Plus className="mr-2 h-4 w-4" />
+                          Add Method
+                        </Button>
+                      ) : undefined
+                    }
+                  />
                 </TableCell>
               </TableRow>
             ) : (
-              methods.map((method) => (
-                <TableRow key={method.id}>
-                  <TableCell className="font-medium">{method.name}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{method.slug}</Badge>
+              filtered.map((method) => (
+                <TableRow
+                  key={method.id}
+                  className="group border-b border-border/30 transition-colors hover:bg-slate-50/50"
+                >
+                  {/* Method Name + Description */}
+                  <TableCell className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50">
+                        <BookOpen className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-foreground truncate">
+                          {method.name}
+                        </p>
+                        {method.description && (
+                          <p className="mt-0.5 text-xs text-muted-foreground truncate max-w-[240px]">
+                            {method.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
                   </TableCell>
-                  <TableCell>{getStatusBadge(method.status)}</TableCell>
-                  <TableCell className="text-muted-foreground font-mono text-xs">
-                    {method.modelPath}
+
+                  {/* Slug Badge */}
+                  <TableCell className="px-6 py-4">
+                    <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">
+                      {method.slug}
+                    </span>
                   </TableCell>
-                  <TableCell>{method.sortOrder}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
+
+                  {/* Status Badge */}
+                  <TableCell className="px-6 py-4">
+                    <StatusBadge
+                      label={
+                        method.status.charAt(0).toUpperCase() +
+                        method.status.slice(1)
+                      }
+                      variant={getMethodStatusVariant(method.status)}
+                      showDot
+                    />
+                  </TableCell>
+
+                  {/* Model Path */}
+                  <TableCell className="px-6 py-4">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Box className="h-3.5 w-3.5 shrink-0" />
+                      <span className="font-mono text-xs truncate max-w-[180px]">
+                        {method.modelPath}
+                      </span>
+                    </div>
+                  </TableCell>
+
+                  {/* Order Badge */}
+                  <TableCell className="px-6 py-4">
+                    <span className="inline-flex h-6 min-w-[24px] items-center justify-center rounded-md bg-slate-100 px-1.5 text-xs font-medium text-slate-700">
+                      {method.sortOrder}
+                    </span>
+                  </TableCell>
+
+                  {/* Actions */}
+                  <TableCell className="px-6 py-4 text-right">
+                    <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                       <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
+                        variant="outline"
+                        size="icon-sm"
+                        className="border-transparent bg-slate-100 text-slate-600 hover:bg-blue-50 hover:text-blue-600"
                         onClick={() => openEdit(method)}
                       >
-                        <Pencil className="h-4 w-4" />
+                        <Pencil className="h-3.5 w-3.5" />
                       </Button>
                       <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive hover:text-destructive"
+                        variant="outline"
+                        size="icon-sm"
+                        className="border-transparent bg-slate-100 text-slate-600 hover:bg-red-50 hover:text-red-600"
                         onClick={() => {
                           setDeletingMethod(method);
                           setDeleteDialogOpen(true);
                         }}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   </TableCell>
@@ -245,6 +413,7 @@ export function MethodsTable({ initialData }: { initialData: Method[] }) {
         </Table>
       </div>
 
+      {/* Create / Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
@@ -257,10 +426,9 @@ export function MethodsTable({ initialData }: { initialData: Method[] }) {
                 : "Add a new SDLC method."}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 py-2">
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Name</Label>
+              <FormField label="Name" htmlFor="name" required error={errors.name}>
                 <Input
                   id="name"
                   value={form.name}
@@ -270,22 +438,26 @@ export function MethodsTable({ initialData }: { initialData: Method[] }) {
                       name: e.target.value,
                       slug: form.slug || generateSlug(e.target.value),
                     });
+                    if (errors.name) setErrors({ ...errors, name: "" });
                   }}
                   placeholder="e.g. Waterfall"
+                  className={errors.name ? "border-destructive" : ""}
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="slug">Slug</Label>
+              </FormField>
+              <FormField label="Slug" htmlFor="slug" required error={errors.slug}>
                 <Input
                   id="slug"
                   value={form.slug}
-                  onChange={(e) => setForm({ ...form, slug: e.target.value })}
+                  onChange={(e) => {
+                    setForm({ ...form, slug: e.target.value });
+                    if (errors.slug) setErrors({ ...errors, slug: "" });
+                  }}
                   placeholder="e.g. waterfall"
+                  className={errors.slug ? "border-destructive" : ""}
                 />
-              </div>
+              </FormField>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
+            <FormField label="Description" htmlFor="description">
               <Textarea
                 id="description"
                 value={form.description}
@@ -293,62 +465,84 @@ export function MethodsTable({ initialData }: { initialData: Method[] }) {
                   setForm({ ...form, description: e.target.value })
                 }
                 placeholder="Describe this SDLC method"
+                rows={3}
               />
-            </div>
+            </FormField>
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="modelPath">Model Path (GLB)</Label>
+              <FormField
+                label="Model Path (GLB)"
+                htmlFor="modelPath"
+                required
+                error={errors.modelPath}
+              >
                 <Input
                   id="modelPath"
                   value={form.modelPath}
-                  onChange={(e) =>
-                    setForm({ ...form, modelPath: e.target.value })
-                  }
+                  onChange={(e) => {
+                    setForm({ ...form, modelPath: e.target.value });
+                    if (errors.modelPath)
+                      setErrors({ ...errors, modelPath: "" });
+                  }}
                   placeholder="/models/waterfall.glb"
+                  className={errors.modelPath ? "border-destructive" : ""}
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="markerPath">Marker Path</Label>
+              </FormField>
+              <FormField
+                label="Marker Path"
+                htmlFor="markerPath"
+                required
+                error={errors.markerPath}
+              >
                 <Input
                   id="markerPath"
                   value={form.markerPath}
-                  onChange={(e) =>
-                    setForm({ ...form, markerPath: e.target.value })
-                  }
+                  onChange={(e) => {
+                    setForm({ ...form, markerPath: e.target.value });
+                    if (errors.markerPath)
+                      setErrors({ ...errors, markerPath: "" });
+                  }}
                   placeholder="/markers/waterfall.png"
+                  className={errors.markerPath ? "border-destructive" : ""}
                 />
-              </div>
+              </FormField>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
+              <FormField label="Status" htmlFor="status">
                 <select
                   id="status"
                   value={form.status}
-                  onChange={(e) => setForm({ ...form, status: e.target.value })}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  onChange={(e) =>
+                    setForm({ ...form, status: e.target.value })
+                  }
+                  className="flex h-9 w-full rounded-lg border border-border bg-white px-3 py-2 text-sm"
                 >
                   <option value="draft">Draft</option>
                   <option value="published">Published</option>
                   <option value="archived">Archived</option>
                 </select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="sortOrder">Sort Order</Label>
+              </FormField>
+              <FormField label="Sort Order" htmlFor="sortOrder">
                 <Input
                   id="sortOrder"
                   type="number"
                   min="0"
                   value={form.sortOrder}
                   onChange={(e) =>
-                    setForm({ ...form, sortOrder: parseInt(e.target.value) || 0 })
+                    setForm({
+                      ...form,
+                      sortOrder: parseInt(e.target.value) || 0,
+                    })
                   }
                 />
-              </div>
+              </FormField>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setDialogOpen(false)}
+              disabled={loading}
+            >
               Cancel
             </Button>
             <Button onClick={handleSave} disabled={loading}>
@@ -358,32 +552,14 @@ export function MethodsTable({ initialData }: { initialData: Method[] }) {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Method</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete &quot;{deletingMethod?.name}&quot;? This will also delete
-              all associated steps. This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDeleteDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={loading}
-            >
-              {loading ? "Deleting..." : "Delete"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+      <DeleteDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Delete Method"
+        description={`Are you sure you want to delete "${deletingMethod?.name}"? This will also delete all associated steps.`}
+        onConfirm={handleDelete}
+        loading={loading}
+      />
+    </div>
   );
 }

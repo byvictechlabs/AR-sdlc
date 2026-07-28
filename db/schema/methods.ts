@@ -1,5 +1,4 @@
 import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
-import { categories } from "./categories";
 
 export const sdlcMethods = sqliteTable("sdlc_methods", {
   id: text("id")
@@ -10,9 +9,6 @@ export const sdlcMethods = sqliteTable("sdlc_methods", {
   description: text("description"),
   modelPath: text("model_path").notNull(),
   markerPath: text("marker_path").notNull(),
-  categoryId: text("category_id").references(() => categories.id, {
-    onDelete: "set null",
-  }),
   status: text("status", { enum: ["draft", "published", "archived"] })
     .notNull()
     .default("draft"),

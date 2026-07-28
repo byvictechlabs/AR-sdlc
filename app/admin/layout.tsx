@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { AdminLayout } from "@/components/layout/AdminLayout";
+import { AdminLayout } from "@/components/admin/AdminLayout";
 
 export default async function AdminRootLayout({
   children,
@@ -10,7 +10,6 @@ export default async function AdminRootLayout({
 
   return (
     <AdminLayout
-      title="AR SDLC Admin"
       user={session?.user ? { name: session.user.name, email: session.user.email } : undefined}
     >
       {children}

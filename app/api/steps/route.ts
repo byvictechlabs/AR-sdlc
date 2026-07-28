@@ -1,23 +1,34 @@
 import { db } from "@/db";
-import { methodSteps } from "@/db/schema";
+import { methodSteps, sdlcMethods } from "@/db/schema";
 import { NextRequest, NextResponse } from "next/server";
 import { stepSchema } from "@/schemas";
-import { asc } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
+import { handleApiError } from "@/lib/api-error";
 
 export async function GET() {
   try {
     const allSteps = await db
-      .select()
+      .select({
+        id: methodSteps.id,
+        methodId: methodSteps.methodId,
+        meshName: methodSteps.meshName,
+        title: methodSteps.title,
+        description: methodSteps.description,
+        content: methodSteps.content,
+        imageUrl: methodSteps.imageUrl,
+        audioUrl: methodSteps.audioUrl,
+        stepOrder: methodSteps.stepOrder,
+        createdAt: methodSteps.createdAt,
+        updatedAt: methodSteps.updatedAt,
+        methodName: sdlcMethods.name,
+      })
       .from(methodSteps)
+      .leftJoin(sdlcMethods, eq(methodSteps.methodId, sdlcMethods.id))
       .orderBy(asc(methodSteps.stepOrder));
 
     return NextResponse.json(allSteps);
   } catch (error) {
-    console.error("Failed to fetch steps:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch steps" },
-      { status: 500 }
-    );
+    return handleApiError(error, "fetch steps");
   }
 }
 
@@ -30,13 +41,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(step, { status: 201 });
   } catch (error) {
-    if (error instanceof Error && error.name === "ZodError") {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-    console.error("Failed to create step:", error);
-    return NextResponse.json(
-      { error: "Failed to create step" },
-      { status: 500 }
-    );
+    return handleApiError(error, "create step");
   }
 }

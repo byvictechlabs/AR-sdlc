@@ -11,6 +11,9 @@ export default async function StepsPage() {
       meshName: methodSteps.meshName,
       title: methodSteps.title,
       description: methodSteps.description,
+      content: methodSteps.content,
+      imageUrl: methodSteps.imageUrl,
+      audioUrl: methodSteps.audioUrl,
       stepOrder: methodSteps.stepOrder,
       createdAt: methodSteps.createdAt,
       updatedAt: methodSteps.updatedAt,
@@ -25,15 +28,5 @@ export default async function StepsPage() {
     .from(sdlcMethods)
     .orderBy(asc(sdlcMethods.sortOrder));
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">Learning Steps</h2>
-        <p className="text-muted-foreground">
-          Manage the learning steps for each SDLC method.
-        </p>
-      </div>
-      <StepsTable initialData={allSteps} methods={allMethods} />
-    </div>
-  );
+  return <StepsTable initialData={allSteps} methods={allMethods} />;
 }

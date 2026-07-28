@@ -3,6 +3,7 @@ import { sdlcMethods } from "@/db/schema";
 import { NextRequest, NextResponse } from "next/server";
 import { methodSchema } from "@/schemas";
 import { eq } from "drizzle-orm";
+import { handleApiError } from "@/lib/api-error";
 
 export async function GET(
   _request: NextRequest,
@@ -25,11 +26,7 @@ export async function GET(
 
     return NextResponse.json(method);
   } catch (error) {
-    console.error("Failed to fetch method:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch method" },
-      { status: 500 }
-    );
+    return handleApiError(error, "fetch method");
   }
 }
 
@@ -57,14 +54,7 @@ export async function PUT(
 
     return NextResponse.json(updated);
   } catch (error) {
-    if (error instanceof Error && error.name === "ZodError") {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-    console.error("Failed to update method:", error);
-    return NextResponse.json(
-      { error: "Failed to update method" },
-      { status: 500 }
-    );
+    return handleApiError(error, "update method");
   }
 }
 
@@ -88,10 +78,6 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Failed to delete method:", error);
-    return NextResponse.json(
-      { error: "Failed to delete method" },
-      { status: 500 }
-    );
+    return handleApiError(error, "delete method");
   }
 }

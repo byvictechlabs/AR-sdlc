@@ -11,6 +11,9 @@ export const methodSteps = sqliteTable("method_steps", {
   meshName: text("mesh_name").notNull().unique(),
   title: text("title").notNull(),
   description: text("description"),
+  content: text("content"),
+  imageUrl: text("image_url"),
+  audioUrl: text("audio_url"),
   stepOrder: integer("step_order").notNull().default(0),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()

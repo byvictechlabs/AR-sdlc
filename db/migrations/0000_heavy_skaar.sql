@@ -59,7 +59,7 @@ CREATE TABLE `method_steps` (
 	`method_id` text NOT NULL,
 	`mesh_name` text NOT NULL,
 	`title` text NOT NULL,
-	`description` text,
+	`description` text,	
 	`step_order` integer DEFAULT 0 NOT NULL,
 	`created_at` integer NOT NULL,
 	`updated_at` integer NOT NULL,

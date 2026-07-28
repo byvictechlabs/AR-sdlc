@@ -15,15 +15,5 @@ export default async function UsersPage() {
     .from(users)
     .orderBy(desc(users.createdAt));
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">Users</h2>
-        <p className="text-muted-foreground">
-          Manage admin accounts and roles.
-        </p>
-      </div>
-      <UsersTable initialData={allUsers} />
-    </div>
-  );
+  return <UsersTable initialData={allUsers} />;
 }

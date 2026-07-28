@@ -3,6 +3,7 @@ import { sdlcMethods } from "@/db/schema";
 import { NextRequest, NextResponse } from "next/server";
 import { methodSchema } from "@/schemas";
 import { asc } from "drizzle-orm";
+import { handleApiError } from "@/lib/api-error";
 
 export async function GET() {
   try {
@@ -13,11 +14,7 @@ export async function GET() {
 
     return NextResponse.json(allMethods);
   } catch (error) {
-    console.error("Failed to fetch methods:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch methods" },
-      { status: 500 }
-    );
+    return handleApiError(error, "fetch methods");
   }
 }
 
@@ -33,13 +30,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(method, { status: 201 });
   } catch (error) {
-    if (error instanceof Error && error.name === "ZodError") {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-    console.error("Failed to create method:", error);
-    return NextResponse.json(
-      { error: "Failed to create method" },
-      { status: 500 }
-    );
+    return handleApiError(error, "create method");
   }
 }
