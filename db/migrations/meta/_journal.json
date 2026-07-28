@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1785158486841,
+      "tag": "0000_heavy_skaar",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1785244800000,
+      "tag": "0001_remove_unused_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1785244801000,
+      "tag": "0002_add_step_columns_and_drop_category",
+      "breakpoints": true
+    }
+  ]
+}
