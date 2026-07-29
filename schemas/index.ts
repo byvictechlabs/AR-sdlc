@@ -13,6 +13,7 @@ export const methodSchema = z.object({
   markerPath: z.string().min(1, "Marker path is required"),
   status: z.enum(["draft", "published", "archived"]).default("draft"),
   sortOrder: z.number().int().min(0).default(0),
+  mindTargetIndex: z.number().int().min(0).nullable().optional(),
 });
 
 export const stepSchema = z.object({

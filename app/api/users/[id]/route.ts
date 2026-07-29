@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
+import { handleApiError } from "@/lib/api-error";
 
 export async function DELETE(
   _request: NextRequest,
@@ -38,10 +39,6 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Failed to delete user:", error);
-    return NextResponse.json(
-      { error: "Failed to delete user" },
-      { status: 500 }
-    );
+    return handleApiError(error, "delete user");
   }
 }

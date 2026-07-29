@@ -188,12 +188,16 @@ export function StepsTable({
       });
       if (!response.ok) {
         const data = await response.json();
+        if (data.details) {
+          setErrors(data.details);
+        }
         throw new Error(data.error || "Failed to save");
       }
       const updated = await fetchSteps();
       setSteps(updated);
       toast.success(editingStep ? "Step updated" : "Step created");
       setDialogOpen(false);
+      setErrors({});
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to save"

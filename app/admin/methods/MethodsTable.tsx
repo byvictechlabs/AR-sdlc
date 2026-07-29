@@ -49,6 +49,7 @@ interface Method {
   markerPath: string;
   status: string;
   sortOrder: number;
+  mindTargetIndex: number | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -78,6 +79,7 @@ export function MethodsTable({ initialData }: { initialData: Method[] }) {
     markerPath: "",
     status: "draft",
     sortOrder: 0,
+    mindTargetIndex: "" as string,
   });
 
   function openCreate() {
@@ -90,6 +92,7 @@ export function MethodsTable({ initialData }: { initialData: Method[] }) {
       markerPath: "",
       status: "draft",
       sortOrder: 0,
+      mindTargetIndex: "",
     });
     setErrors({});
     setDialogOpen(true);
@@ -105,6 +108,7 @@ export function MethodsTable({ initialData }: { initialData: Method[] }) {
       markerPath: method.markerPath,
       status: method.status,
       sortOrder: method.sortOrder,
+      mindTargetIndex: method.mindTargetIndex !== null ? String(method.mindTargetIndex) : "",
     });
     setErrors({});
     setDialogOpen(true);
@@ -165,11 +169,15 @@ export function MethodsTable({ initialData }: { initialData: Method[] }) {
           markerPath: form.markerPath.trim(),
           status: form.status,
           sortOrder: Number(form.sortOrder),
+          mindTargetIndex: form.mindTargetIndex !== "" ? Number(form.mindTargetIndex) : null,
         }),
       });
 
       if (!response.ok) {
         const data = await response.json();
+        if (data.details) {
+          setErrors(data.details);
+        }
         throw new Error(data.error || "Failed to save method");
       }
 
@@ -177,6 +185,7 @@ export function MethodsTable({ initialData }: { initialData: Method[] }) {
       setMethods(updated);
       toast.success(editingMethod ? "Method updated" : "Method created");
       setDialogOpen(false);
+      setErrors({});
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to save"
@@ -293,6 +302,9 @@ export function MethodsTable({ initialData }: { initialData: Method[] }) {
                   Order
                 </div>
               </TableHead>
+              <TableHead className="h-10 px-6 text-xs font-medium uppercase tracking-wide text-muted-foreground w-24">
+                Target Index
+              </TableHead>
               <TableHead className="h-10 px-6 text-xs font-medium uppercase tracking-wide text-muted-foreground w-24 text-right">
                 Actions
               </TableHead>
@@ -301,7 +313,7 @@ export function MethodsTable({ initialData }: { initialData: Method[] }) {
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow className="border-none hover:bg-transparent">
-                <TableCell colSpan={6}>
+                <TableCell colSpan={7}>
                   <EmptyState
                     title="No methods found"
                     description={
@@ -379,6 +391,13 @@ export function MethodsTable({ initialData }: { initialData: Method[] }) {
                   <TableCell className="px-6 py-4">
                     <span className="inline-flex h-6 min-w-[24px] items-center justify-center rounded-md bg-slate-100 px-1.5 text-xs font-medium text-slate-700">
                       {method.sortOrder}
+                    </span>
+                  </TableCell>
+
+                  {/* MindAR Target Index */}
+                  <TableCell className="px-6 py-4">
+                    <span className="inline-flex h-6 min-w-[24px] items-center justify-center rounded-md bg-purple-50 px-1.5 text-xs font-medium text-purple-700">
+                      {method.mindTargetIndex !== null ? method.mindTargetIndex : "—"}
                     </span>
                   </TableCell>
 
@@ -506,7 +525,7 @@ export function MethodsTable({ initialData }: { initialData: Method[] }) {
                 />
               </FormField>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <FormField label="Status" htmlFor="status">
                 <select
                   id="status"
@@ -533,6 +552,18 @@ export function MethodsTable({ initialData }: { initialData: Method[] }) {
                       sortOrder: parseInt(e.target.value) || 0,
                     })
                   }
+                />
+              </FormField>
+              <FormField label="MindAR Target Index" htmlFor="mindTargetIndex">
+                <Input
+                  id="mindTargetIndex"
+                  type="number"
+                  min="0"
+                  value={form.mindTargetIndex}
+                  onChange={(e) =>
+                    setForm({ ...form, mindTargetIndex: e.target.value })
+                  }
+                  placeholder="e.g. 0"
                 />
               </FormField>
             </div>

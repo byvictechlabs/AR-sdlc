@@ -13,6 +13,7 @@ export const sdlcMethods = sqliteTable("sdlc_methods", {
     .notNull()
     .default("draft"),
   sortOrder: integer("sort_order").notNull().default(0),
+  mindTargetIndex: integer("mind_target_index"),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()
     .$defaultFn(() => new Date()),

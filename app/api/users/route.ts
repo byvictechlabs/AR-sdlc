@@ -3,6 +3,7 @@ import { users } from "@/db/schema";
 import { NextRequest, NextResponse } from "next/server";
 import bcryptjs from "bcryptjs";
 import { desc } from "drizzle-orm";
+import { handleApiError } from "@/lib/api-error";
 
 export async function GET() {
   try {
@@ -19,11 +20,7 @@ export async function GET() {
 
     return NextResponse.json(allUsers);
   } catch (error) {
-    console.error("Failed to fetch users:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch users" },
-      { status: 500 }
-    );
+    return handleApiError(error, "fetch users");
   }
 }
 
@@ -37,15 +34,22 @@ export async function POST(request: NextRequest) {
     const role = (body.role as string) || "admin";
 
     if (!name || !email || !password) {
+      const details: Record<string, string> = {};
+      if (!name) details.name = "Name is required";
+      if (!email) details.email = "Email is required";
+      if (!password) details.password = "Password is required";
       return NextResponse.json(
-        { error: "Name, email, and password are required" },
+        { error: "Validation failed", details },
         { status: 400 }
       );
     }
 
     if (password.length < 6) {
       return NextResponse.json(
-        { error: "Password must be at least 6 characters" },
+        {
+          error: "Validation failed",
+          details: { password: "Password must be at least 6 characters" },
+        },
         { status: 400 }
       );
     }
@@ -72,19 +76,6 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    if (
-      error instanceof Error &&
-      error.message?.includes("UNIQUE constraint failed")
-    ) {
-      return NextResponse.json(
-        { error: "Email already exists" },
-        { status: 400 }
-      );
-    }
-    console.error("Failed to create user:", error);
-    return NextResponse.json(
-      { error: "Failed to create user" },
-      { status: 500 }
-    );
+    return handleApiError(error, "create user");
   }
 }

@@ -1,9 +1,7 @@
 import Link from "next/link";
 import {
   ArrowLeft,
-  Box,
   Scan,
-  BookOpen,
   MousePointerClick,
   Camera,
   Lightbulb,

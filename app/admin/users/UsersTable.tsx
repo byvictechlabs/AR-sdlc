@@ -101,12 +101,16 @@ export function UsersTable({ initialData }: { initialData: User[] }) {
       });
       if (!response.ok) {
         const data = await response.json();
+        if (data.details) {
+          setErrors(data.details);
+        }
         throw new Error(data.error || "Failed to create user");
       }
       const updated = await fetchUsers();
       setUsers(updated);
       toast.success("User created");
       setDialogOpen(false);
+      setErrors({});
       setForm({ name: "", email: "", password: "", role: "admin" });
       setErrors({});
     } catch (error) {
