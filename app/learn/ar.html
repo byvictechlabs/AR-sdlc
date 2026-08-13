@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mode AR BumDes</title>
+    
+    <!-- Scripts AR -->
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
+    
+    <!-- Tailwind CSS (Biar gaya) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #e2e8f0; /* Slate-200 */
+        }
+        
+        /* Container App Shell */
+        #app-container {
+            position: relative;
+            width: 100%;
+            height: 100vh; 
+            overflow: hidden;
+            background-color: #333; 
+        }
+
+        /* Responsive Desktop: Batasi lebar kayak HP */
+        @media (min-width: 640px) {
+            body {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 100vh;
+            }
+            #app-container {
+                max-width: 28rem; /* max-w-md equivalent */
+                height: 100vh; 
+                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+                border-radius: 0px; 
+            }
+        }
+
+        #ui-layer { 
+            position: absolute; 
+            top: 0; left: 0; 
+            width: 100%; height: 100%; 
+            z-index: 50; 
+            pointer-events: none; 
+        }
+
+        .back-btn { 
+            pointer-events: auto; 
+            position: absolute; 
+            top: 20px; left: 20px; 
+            background: rgba(255, 255, 255, 0.9); 
+            backdrop-filter: blur(4px);
+            border: none; 
+            padding: 10px 20px; 
+            border-radius: 30px; 
+            font-weight: bold; 
+            font-size: 14px;
+            color: #1e293b;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); 
+            cursor: pointer; 
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: transform 0.1s;
+        }
+        .back-btn:active { transform: scale(0.95); }
+
+        .scan-guide { 
+            position: absolute; 
+            bottom: 40px; 
+            width: 100%; 
+            text-align: center; 
+            color: white; 
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5); 
+            display: none; 
+            pointer-events: none;
+        }
+        
+        .scan-guide p {
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+
+        #start-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(to bottom right, #2563EB, #4F46E5);
+            z-index: 999;
+            display: flex; justify-content: center; align-items: center; flex-direction: column;
+            color: white; text-align: center; padding: 20px;
+        }
+        
+        .btn-start {
+            background: white; color: #2563EB; border: none; 
+            padding: 16px 48px; border-radius: 50px; 
+            font-size: 16px; font-weight: 800; cursor: pointer;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s;
+            margin-top: 30px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .btn-start:hover { transform: translateY(-2px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
+        .btn-start:active { transform: translateY(0); }
+
+        /* Fix A-Frame Embedded Mode */
+        a-scene {
+            width: 100%;
+            height: 100%;
+            position: absolute; 
+            top: 0;
+            left: 0;
+            z-index: 1; 
+        }
+        
+        video {
+            object-fit: cover !important;
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            z-index: 0 !important; 
+        }
+    </style>
+</head>
+<body>
+
+    <!-- CONTAINER UTAMA (Batas HP di Desktop) -->
+    <div id="app-container">
+
+        <!-- SCREEN: START -->
+        <div id="start-screen">
+            <div class="bg-white/10 p-4 rounded-full mb-4 backdrop-blur-sm">
+                <span style="font-size: 40px;">📷</span>
+            </div>
+            <h1 class="text-2xl font-bold mb-2">Siap Scan Produk?</h1>
+            <p class="text-sm opacity-90 max-w-[80%] leading-relaxed">
+                Pastikan ruangan terang & internet lancar.<br>
+                Gunakan browser <b>Chrome</b> atau <b>Safari</b>.
+            </p>
+            <button class="btn-start" onclick="startAR()">Mulai Kamera</button>
+        </div>
+
+        <!-- UI LAYER (Tombol Back & Guide) -->
+        <div id="ui-layer">
+            <button class="back-btn" onclick="stopARAndGoBack()">
+                <span>⬅</span> Kembali
+            </button>
+            <div id="guide-text" class="scan-guide">
+                <p>Arahkan kamera ke bungkus produk<br><span class="text-[10px] opacity-80">(Cubit layar buat Zoom)</span></p>
+            </div>
+        </div>
+
+        <!-- SCENE AR -->
+        <a-scene 
+            embedded
+            mindar-image="imageTargetSrc: ./targets.mind; filterMinCF:0.0001; filterBeta: 0.001; uiLoading:no; uiScanning:no; autoStart: false;" 
+            color-space="sRGB" 
+            renderer="colorManagement: true, physicallyCorrectLights" 
+            vr-mode-ui="enabled: false" 
+            device-orientation-permission-ui="enabled: false"
+            gesture-detector>
+
+            <a-assets>
+                <a-asset-item id="model-nanas" src="./assets/stik nans.glb"></a-asset-item>
+                <a-asset-item id="model-ikan" src="./assets/stikkan.glb"></a-asset-item>
+                <a-asset-item id="model-bandrek" src="./assets/bandrek.glb"></a-asset-item>
+                <a-asset-item id="model-terasi" src="./assets/terasiC.glb"></a-asset-item>
+                <a-asset-item id="model-herbal" src="./assets/terasiC.glb"></a-asset-item>
+                <a-asset-item id="model-lomek" src="./assets/terasiC.glb"></a-asset-item>
+            </a-assets>
+
+            <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+            <!-- Target 0 -->
+            <a-entity mindar-image-target="targetIndex: 0">
+                <!-- Fix scale typo: 1.2 not 1. 2 -->
+                <a-entity id="ar-content-1" gltf-model="#model-nanas" rotation="0 0 0" position="0 0 0" scale="1.2 1.2 1.2" visible="false" class="clickable" gesture-handler></a-entity>
+            </a-entity>
+
+            <!-- Target 1 -->
+            <a-entity mindar-image-target="targetIndex: 1">
+                <a-entity id="ar-content-2" gltf-model="#model-ikan" rotation="0 0 0" position="0 0 0" scale="1.2 1.2 1.2" visible="false" class="clickable" gesture-handler></a-entity>
+            </a-entity>
+
+            <!-- Target 2 -->
+            <a-entity mindar-image-target="targetIndex: 2">
+                <a-entity id="ar-content-3" gltf-model="#model-bandrek" rotation="0 0 0" position="0 0 0" scale="1.2 1.2 1.2" visible="false" class="clickable" gesture-handler></a-entity>
+            </a-entity>
+
+            <!-- Target 3 -->
+            <a-entity mindar-image-target="targetIndex: 3">
+                <a-entity id="ar-content-4" gltf-model="#model-terasi" rotation="0 0 0" position="0 0 0" scale="1.2 1.2 1.2" visible="false" class="clickable" gesture-handler></a-entity>
+            </a-entity>
+            <!-- Target 4 -->
+            <a-entity mindar-image-target="targetIndex: 4">
+                <a-entity id="ar-content-5" gltf-model="#model-herbal" rotation="0 0 0" position="0 0 0" scale="1.2 1.2 1.2" visible="false" class="clickable" gesture-handler></a-entity>
+            </a-entity>
+            <!-- Target 5 -->
+            <a-entity mindar-image-target="targetIndex: 5">
+                <a-entity id="ar-content-6" gltf-model="#model-lomek" rotation="0 0 0" position="0 0 0" scale="1.2 1.2 1.2" visible="false" class="clickable" gesture-handler></a-entity>
+            </a-entity>
+
+        </a-scene>
+
+    </div> <!-- End App Container -->
+
+    <script>
+        function stopARAndGoBack() {
+            try {
+                const sceneEl = document.querySelector('a-scene');
+                const arSystem = sceneEl.systems["mindar-image-system"];
+                if (arSystem) {
+                    arSystem.stop();
+                }
+            } catch(e) {
+                console.log("AR belum start, langsung back aja");
+            }
+            window.location.href = 'shop.html';
+        }
+
+        function startAR() {
+            if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+                alert("Wajib HTTPS bro! Redirecting...");
+                location.href = 'https:' + window.location.href.substring(window.location.protocol.length);
+                return;
+            }
+
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('guide-text').style.display = 'block';
+
+            const sceneEl = document.querySelector('a-scene');
+            const arSystem = sceneEl.systems["mindar-image-system"];
+            
+            arSystem.start(); 
+        }
+
+        const sceneEl = document.querySelector('a-scene');
+        sceneEl.addEventListener("arError", function(event) {
+            console.error("AR Error (MindAR):", event);
+            alert("Gagal akses kamera! Cek Izin Browser kamu.");
+            document.getElementById('start-screen').style.display = 'flex';
+        });
+
+        // --- GESTURE DETECTOR ---
+        AFRAME.registerComponent("gesture-detector", {
+            init: function() {
+                this.startTouch = null;
+                this.lastTouch = null;
+                this.currentGesture = null;
+                this.lockThreshold = 15;
+                this.startSpread = 0;
+
+                this.onTouchStart = this.onTouchStart.bind(this);
+                this.onTouchMove = this.onTouchMove.bind(this);
+                this.onTouchEnd = this.onTouchEnd.bind(this);
+
+                this.el.addEventListener("touchstart", this.onTouchStart);
+                this.el.addEventListener("touchmove", this.onTouchMove);
+                this.el.addEventListener("touchend", this.onTouchEnd);
+            },
+            onTouchStart: function(event) {
+                if (event.touches.length === 1) {
+                    this.startTouch = { x: event.touches[0].clientX, y: event.touches[0].clientY };
+                    this.lastTouch = { x: event.touches[0].clientX, y: event.touches[0].clientY };
+                    this.currentGesture = null;
+                } else if (event.touches.length === 2) {
+                    this.startSpread = this.getSpread(event.touches);
+                    this.currentGesture = 'pinch';
+                }
+            },
+            onTouchMove: function(event) {
+                if (event.touches.length === 1 && this.startTouch) {
+                    var currentX = event.touches[0].clientX;
+                    var currentY = event.touches[0].clientY;
+                    var deltaX = currentX - this.lastTouch.x;
+                    var deltaY = currentY - this.lastTouch.y;
+                    var totalDeltaX = Math.abs(currentX - this.startTouch.x);
+                    var totalDeltaY = Math.abs(currentY - this.startTouch.y);
+
+                    if (!this.currentGesture) {
+                        if (totalDeltaX > this.lockThreshold || totalDeltaY > this.lockThreshold) {
+                            this.currentGesture = totalDeltaX > totalDeltaY ? 'horizontal' : 'vertical';
+                        }
+                    }
+
+                    if (this.currentGesture === 'horizontal') {
+                        this.el.emit("rotateY", { delta: deltaX });
+                    } else if (this.currentGesture === 'vertical') {
+                        this.el.emit("rotateX", { delta: deltaY });
+                    }
+
+                    this.lastTouch.x = currentX;
+                    this.lastTouch.y = currentY;
+                } else if (event.touches.length === 2 && this.currentGesture === 'pinch') {
+                    var currentSpread = this.getSpread(event.touches);
+                    var spreadChange = currentSpread - this.startSpread;
+                    this.el.emit("pinchZoom", { spreadChange: spreadChange });
+                    this.startSpread = currentSpread;
+                }
+            },
+            onTouchEnd: function(event) {
+                if (event.touches.length === 0) {
+                    this.startTouch = null;
+                    this.currentGesture = null;
+                    this.el.emit("gestureEnd");
+                }
+            },
+            getSpread: function(touches) {
+                var dx = touches[0].clientX - touches[1].clientX;
+                var dy = touches[0].clientY - touches[1].clientY;
+                return Math.sqrt(dx * dx + dy * dy);
+            }
+        });
+
+        // --- GESTURE HANDLER ---
+        AFRAME.registerComponent("gesture-handler", {
+            schema: {
+                enabled: { default: true },
+                rotationSpeed: { default: 0.4 },
+                damping: { default: 0.93 },
+                minScale: { default: 0.3 },
+                maxScale: { default: 8 }
+            },
+            init: function() {
+                this.velocityY = 0;
+                this.velocityX = 0;
+                this.isDragging = false;
+                this.initialScale = this.el.object3D.scale.clone();
+                this.scaleFactor = 1;
+
+                this.onRotateY = this.onRotateY.bind(this);
+                this.onRotateX = this.onRotateX.bind(this);
+                this.onPinchZoom = this.onPinchZoom.bind(this);
+                this.onGestureEnd = this.onGestureEnd.bind(this);
+
+                this.el.sceneEl.addEventListener("rotateY", this.onRotateY);
+                this.el.sceneEl.addEventListener("rotateX", this.onRotateX);
+                this.el.sceneEl.addEventListener("pinchZoom", this.onPinchZoom);
+                this.el.sceneEl.addEventListener("gestureEnd", this.onGestureEnd);
+            },
+            onRotateY: function(event) {
+                if (!this.el.getAttribute('visible')) return;
+                this.isDragging = true;
+                this.velocityY = event.detail.delta * this.data.rotationSpeed;
+                this.el.object3D.rotation.y += this.velocityY * 0.01;
+            },
+            onRotateX: function(event) {
+                if (!this.el.getAttribute('visible')) return;
+                this.isDragging = true;
+                this.velocityX = event.detail.delta * this.data.rotationSpeed;
+                this.el.object3D.rotation.x += this.velocityX * 0.01;
+            },
+            onPinchZoom: function(event) {
+                if (!this.el.getAttribute('visible')) return;
+                this.scaleFactor *= 1 + event.detail.spreadChange / 500;
+                this.scaleFactor = Math.min(Math.max(this.scaleFactor, this.data.minScale), this.data.maxScale);
+                this.el.object3D.scale.x = this.scaleFactor * this.initialScale.x;
+                this.el.object3D.scale.y = this.scaleFactor * this.initialScale.y;
+                this.el.object3D.scale.z = this.scaleFactor * this.initialScale.z;
+            },
+            onGestureEnd: function() {
+                this.isDragging = false;
+            },
+            tick: function() {
+                if (!this.el.getAttribute('visible')) return;
+                if (this.isDragging) return;
+
+                var damping = this.data.damping;
+                var minVelocity = 0.001;
+
+                if (Math.abs(this.velocityY) > minVelocity) {
+                    this.el.object3D.rotation.y += this.velocityY * 0.01;
+                    this.velocityY *= damping;
+                } else { this.velocityY = 0; }
+
+                if (Math.abs(this.velocityX) > minVelocity) {
+                    this.el.object3D.rotation.x += this.velocityX * 0.01;
+                    this.velocityX *= damping;
+                } else { this.velocityX = 0; }
+            }
+        });
+
+        // --- LOGIC PEMILIHAN PRODUK ---
+        var urlParams = new URLSearchParams(window.location.search);
+        var productId = urlParams.get('id');
+
+        if(productId) {
+            var contentId = 'ar-content-' + productId;
+            var entity = document.getElementById(contentId);
+            
+            if(entity) {
+                entity.setAttribute('visible', 'true');
+                console.log("Menampilkan AR untuk ID:", productId);
+            } else {
+                console.warn("Model 3D belum disiapkan untuk ID:", productId);
+                alert("Model 3D untuk produk ini belum tersedia/salah ID.");
+            }
+        }
+    </script>
+</body>
+</html>

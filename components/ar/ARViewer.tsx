@@ -56,14 +56,6 @@ export function ARViewer({
   }, [steps]);
 
   useEffect(() => {
-    // Set body styles BEFORE A-Frame creates canvas
-    document.body.style.margin = "0";
-    document.body.style.padding = "0";
-    document.body.style.overflow = "hidden";
-    document.body.style.width = "100%";
-    document.body.style.height = "100%";
-    document.documentElement.style.height = "100%";
-
     if (!containerRef.current) return;
     const container = containerRef.current;
     let cancelled = false;
@@ -178,67 +170,55 @@ export function ARViewer({
 
           canvas.addEventListener("touchend", (e: TouchEvent) => {
             if (isDragging || !modelRef.current) return;
+            const touch = e.changedTouches[0];
+            if (!touch) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const x = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
+            const y = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
+
+            const THREE = (window as any).AFRAME?.THREE;
+            if (!THREE) return;
+
+            let threeCamera: any = null;
             try {
-              const touch = e.changedTouches[0];
-              if (!touch) return;
+              const camEl = scene.querySelector("a-camera");
+              if (camEl?.components?.camera?.camera) {
+                threeCamera = camEl.components.camera.camera;
+              } else {
+                threeCamera = scene.camera;
+              }
+            } catch {}
 
-              const rect = canvas.getBoundingClientRect();
-              const x = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
-              const y = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
+            if (!threeCamera) return;
 
-              const THREE = (window as any).AFRAME?.THREE;
-              if (!THREE) return;
+            const raycaster = new THREE.Raycaster();
+            const mouse = new THREE.Vector2(x, y);
+            raycaster.setFromCamera(mouse, threeCamera);
 
-              let threeCamera: any = null;
-              try {
-                const camEl = scene.querySelector("a-camera");
-                if (camEl?.components?.camera?.camera) {
-                  threeCamera = camEl.components.camera.camera;
-                } else {
-                  threeCamera = scene.camera;
-                }
-              } catch {}
+            const meshes: any[] = [];
+            modelRef.current.object3D.traverse((child: any) => {
+              if (child.isMesh) meshes.push(child);
+            });
 
-              if (!threeCamera) return;
+            if (meshes.length === 0) return;
 
-              const raycaster = new THREE.Raycaster();
-              const mouse = new THREE.Vector2(x, y);
-              raycaster.setFromCamera(mouse, threeCamera);
-
-              const meshes: any[] = [];
-              const meshNames: string[] = [];
-              modelRef.current.object3D.traverse((child: any) => {
-                if (child.isMesh) {
-                  meshes.push(child);
-                  if (child.name) meshNames.push(child.name);
-                }
-              });
-              console.log("[AR] Meshes:", meshNames);
-
-              if (meshes.length === 0) return;
-
-              const intersects = raycaster.intersectObjects(meshes, false);
-              console.log("[AR] Intersections:", intersects.length);
-              if (intersects.length > 0) {
-                let meshName = intersects[0].object.name;
-                if (!meshName) {
-                  let parent = intersects[0].object.parent;
-                  while (parent && !meshName) {
-                    meshName = parent.name;
-                    parent = parent.parent;
-                  }
-                }
-                console.log("[AR] Tapped mesh:", meshName);
-                if (meshName) {
-                  const step = stepsRef.current.find(
-                    (s) => s.meshName === meshName
-                  );
-                  console.log("[AR] Step found:", step?.title);
-                  if (step) setSelectedStep(step);
+            const intersects = raycaster.intersectObjects(meshes, false);
+            if (intersects.length > 0) {
+              let meshName = intersects[0].object.name;
+              if (!meshName) {
+                let parent = intersects[0].object.parent;
+                while (parent && !meshName) {
+                  meshName = parent.name;
+                  parent = parent.parent;
                 }
               }
-            } catch (err) {
-              console.error("[AR] Tap error:", err);
+              if (meshName) {
+                const step = stepsRef.current.find(
+                  (s) => s.meshName === meshName
+                );
+                if (step) setSelectedStep(step);
+              }
             }
           }, { passive: true });
         }

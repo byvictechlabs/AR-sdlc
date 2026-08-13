@@ -46,7 +46,7 @@ export default async function MulaiBelajarPage() {
             {methods.map((method) => (
               <Link
                 key={method.id}
-                href={`/learn/${method.slug}`}
+                href={`/learn/ar.html?method=${method.slug}`}
                 className="flex items-start gap-3 rounded-xl border border-border/60 bg-white p-4 shadow-sm active:bg-blue-50/50 active:border-blue-200 transition-colors"
               >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
