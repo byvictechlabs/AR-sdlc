@@ -1,92 +1,97 @@
 import Link from "next/link";
-import { Box, BookOpen, HelpCircle, ArrowRight } from "lucide-react";
+import Image from "next/image";
+import { Lightbulb, BookOpen } from "lucide-react";
 
 export default function MenuPage() {
   return (
-    <div className="min-h-dvh bg-[#f8fafc]">
-      {/* Navbar */}
-      <header className="sticky top-0 z-50 border-b border-border/60 bg-white/80 backdrop-blur-md safe-top">
-        <div className="mx-auto flex h-14 max-w-lg items-center justify-between px-4">
-          <div className="flex items-center gap-2">
-            <Link
-              href="/"
-              className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-muted-foreground active:bg-slate-200 transition-colors"
-            >
-              <svg
-                className="h-4 w-4"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M15 18l-6-6 6-6" />
-              </svg>
-            </Link>
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500">
-              <Box className="h-3.5 w-3.5 text-white" />
-            </div>
-            <span className="text-sm font-semibold text-foreground">
-              AR SDLC
-            </span>
-          </div>
-        </div>
-      </header>
+    <div className="relative flex min-h-dvh flex-col items-center justify-between bg-white overflow-hidden pb-12">
+      
+      {/* --- BAGIAN ATAS: Background Biru (Dibatasi sebelum teks) --- */}
+      {/* Tinggi (height) dikurangi drastis menjadi h-36 agar gradasinya hilang sebelum menyentuh teks */}
+      <div className="absolute top-0 left-0 right-0 h-36 bg-gradient-to-b from-blue-600 to-transparent z-0 pointer-events-none">
+        {/* Lingkaran Bokeh Transparan */}
+        <div className="absolute top-4 left-4 w-20 h-20 rounded-full bg-white/20 blur-xl" />
+        <div className="absolute -top-4 right-10 w-28 h-28 rounded-full bg-white/20 blur-2xl" />
+      </div>
 
-      {/* Content */}
-      <div className="mx-auto max-w-lg px-4 pt-10 pb-12">
-        {/* Greeting */}
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-foreground">
-            Halo! 👋
+      {/* --- KONTEN UTAMA --- */}
+      {/* Margin top (mt-32) ditambahkan agar teks benar-benar berada di area putih */}
+      <div className="relative z-10 flex flex-col items-center w-full mt-32 px-6 flex-grow">
+        
+        {/* Teks Judul */}
+        <div className="text-center">
+          <p className="text-sm font-semibold text-gray-800 mb-1">
+            Belajar lebih mudah dengan
+          </p>
+          <h1 className="text-3xl font-extrabold text-blue-500 tracking-tight">
+            Augmented Reality
           </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Apa yang ingin kamu pelajari hari ini?
+          <p className="mt-3 text-xs font-medium text-gray-500 leading-relaxed max-w-[280px] mx-auto">
+            Jelajahi berbagai metode Software Development Life Cycle (SDLC) secara interaktif dalam bentuk 3D.
           </p>
         </div>
 
-        {/* Menu Cards */}
-        <div className="space-y-3">
-          {/* Mulai Belajar */}
+        {/* Ilustrasi Utama (Diperbesar) */}
+        {/* max-w diperbesar menjadi 360px dan margin vertikal disesuaikan agar gambar lebih menonjol */}
+        <div className="relative my-4 w-full max-w-[360px] aspect-square flex items-center justify-center">
+          <Image
+            src="/images/ar2.png" // Pastikan nama file ini sesuai
+            alt="AR SDLC Illustration"
+            width={450} 
+            height={450}
+            style={{ objectFit: 'contain' }}
+            priority
+          />
+        </div>
+
+        {/* --- KARTU MENU (TOMBOL) --- */}
+        {/* mt-auto dihapus dan diganti dengan mt-2 agar posisi tombol lebih naik mendekati gambar */}
+        <div className="w-full max-w-sm flex flex-col gap-4 mt-2 mb-20">
+          
+          {/* Tombol 1: Mulai Belajar (Biru Gradasi) */}
           <Link
             href="/home/mulai-belajar"
-            className="flex items-center gap-4 rounded-2xl border border-border/60 bg-white p-5 shadow-sm active:bg-blue-50/50 active:border-blue-200 transition-colors"
+            className="flex items-center px-6 py-4 rounded-xl bg-gradient-to-r from-blue-600 to-blue-400 text-white shadow-lg shadow-blue-500/30 active:scale-95 transition-all duration-200"
           >
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-blue-500 shadow-lg shadow-blue-500/25">
-              <BookOpen className="h-6 w-6 text-white" />
+            <div className="mr-5">
+              <Lightbulb className="w-8 h-8 text-white" strokeWidth={1.5} />
             </div>
-            <div className="min-w-0 flex-1">
-              <h2 className="text-base font-semibold text-foreground">
-                Mulai Belajar
-              </h2>
-              <p className="mt-0.5 text-xs text-muted-foreground leading-relaxed">
-                Pilih metode SDLC dan pelajari tahapannya melalui AR
-              </p>
+            <div className="flex flex-col text-left">
+              <span className="font-bold text-lg">Mulai Belajar</span>
+              <span className="text-[11px] text-blue-50 mt-0.5">
+                Pilih metode SDLC dan modelkan 3D
+              </span>
             </div>
-            <ArrowRight className="h-5 w-5 shrink-0 text-muted-foreground" />
           </Link>
 
-          {/* Panduan */}
+          {/* Tombol 2: Panduan (Putih) */}
           <Link
             href="/home/panduan"
-            className="flex items-center gap-4 rounded-2xl border border-border/60 bg-white p-5 shadow-sm active:bg-slate-50 transition-colors"
+            className="flex items-center px-6 py-4 rounded-xl bg-white border border-gray-200 shadow-sm shadow-gray-200/50 active:scale-95 transition-all duration-200"
           >
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-slate-100">
-              <HelpCircle className="h-6 w-6 text-slate-600" />
+            <div className="mr-5">
+              <BookOpen className="w-8 h-8 text-blue-500" strokeWidth={1.5} />
             </div>
-            <div className="min-w-0 flex-1">
-              <h2 className="text-base font-semibold text-foreground">
-                Panduan
-              </h2>
-              <p className="mt-0.5 text-xs text-muted-foreground leading-relaxed">
-                Cara menggunakan aplikasi AR SDLC
-              </p>
+            <div className="flex flex-col text-left">
+              <span className="font-bold text-lg text-blue-500">Panduan</span>
+              <span className="text-[11px] text-gray-500 mt-0.5">
+                Lihat cara penggunaan aplikasi AR
+              </span>
             </div>
-            <ArrowRight className="h-5 w-5 shrink-0 text-muted-foreground" />
           </Link>
+
         </div>
       </div>
+
+      {/* --- FOOTER BAWAH --- */}
+      <div className="absolute bottom-0 left-0 right-0 bg-blue-500 pt-3 pb-5 flex flex-col items-center justify-center z-20">
+        <p className="text-[10px] text-white/90 font-medium tracking-wide">
+          © 2026 SDLC AR — Media Pembelajaran Interaktif
+        </p>
+        {/* Indikator Home Screen iPhone */}
+        <div className="w-32 h-1 bg-white/50 rounded-full mt-3" />
+      </div>
+
     </div>
   );
 }

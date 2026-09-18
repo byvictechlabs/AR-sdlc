@@ -15,7 +15,7 @@ export default async function StepsPage() {
       imageUrl: methodSteps.imageUrl,
       audioUrl: methodSteps.audioUrl,
       stepOrder: methodSteps.stepOrder,
-      createdAt: methodSteps.createdAt,
+      createdAt: methodSteps.createdAt,     
       updatedAt: methodSteps.updatedAt,
       methodName: sdlcMethods.name,
     })
