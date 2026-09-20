@@ -221,98 +221,63 @@
     </div>
 
     <script>
-        // ================= KONFIGURASI METODE =================
-        // targetIndex & model diambil dari sini. Cek sesuai database (sdlcMethods).
-        const METHOD_CONFIG = {
-            waterfall: { targetIndex: 0, modelPath: "/models/waterfall.glb", name: "Waterfall" },
-            agile:     { targetIndex: 1, modelPath: "/models/agile-new.glb",     name: "Agile" },
-            rad:       { targetIndex: 2, modelPath: "/models/rad.glb",       name: "RAD" },
-        };
-
+        // ================= URL PARAMS =================
         const urlParams = new URLSearchParams(window.location.search);
         const methodSlug = urlParams.get("method") || "agile";
-        const methodCfg = METHOD_CONFIG[methodSlug] || METHOD_CONFIG.agile;
 
-        document.getElementById("target-entity").setAttribute("mindar-image-target", "targetIndex: " + methodCfg.targetIndex);
-        document.title = "AR SDLC - " + methodCfg.name;
-        document.getElementById("method-title").textContent = "Metode " + methodCfg.name;
-
-        // ================= DATA TAHAPAN =================
-        // Data fallback (biar tetap jalan walau API offline).
-        // Data dari /api/steps (database) akan menimpa data ini.
-        const FALLBACK_STEPS = {
-            waterfall: {
-                WF_REQUIREMENTS: { meshName: "WF_REQUIREMENTS", title: "Requirements", description: "Tahap pengumpulan dan analisis kebutuhan sistem.", content: "Pada tahap Requirements, tim pengembang bekerja sama dengan stakeholder untuk mengidentifikasi dan mendokumentasikan semua kebutuhan sistem." },
-                WF_DESIGN: { meshName: "WF_DESIGN", title: "Design", description: "Tahap perancangan sistem berdasarkan persyaratan yang telah dikumpulkan.", content: "Tahap Design mengubah kebutuhan yang telah terkumpul menjadi rancangan sistem. Tim merancang arsitektur sistem, struktur database, antarmuka pengguna (UI/UX), dan komponen perangkat lunak." },
-                WF_IMPLEMENTATION: { meshName: "WF_IMPLEMENTATION", title: "Implementation", description: "Tahap implementasi kode program berdasarkan desain yang telah dibuat.", content: "Pada tahap Implementation, para developer mulai menulis kode program sesuai dengan spesifikasi dan desain yang telah ditetapkan." },
-                WF_TESTING: { meshName: "WF_TESTING", title: "Testing", description: "Tahap pengujian untuk memastikan sistem berfungsi sesuai persyaratan.", content: "Tahap Testing bertujuan untuk memverifikasi dan memvalidasi bahwa sistem yang telah dikembangkan memenuhi semua persyaratan yang telah ditetapkan." },
-                WF_DEPLOYMENT: { meshName: "WF_DEPLOYMENT", title: "Deployment", description: "Tahap penyebaran sistem ke lingkungan produksi.", content: "Tahap Deployment meliputi proses instalasi dan penyebaran sistem ke lingkungan produksi yang sebenarnya." },
-                WF_MAINTENANCE: { meshName: "WF_MAINTENANCE", title: "Maintenance", description: "Tahap pemeliharaan sistem setelah deployment.", content: "Tahap Maintenance adalah fase terakhir yang berlangsung terus-menerus setelah sistem di-deploy. Kegiatan meliputi perbaikan bug dan penambahan fitur baru." },
-            },
-            agile: {
-                AG_REQUIREMENT: {
-                    meshName: "AG_REQUIREMENT",
-                    title: "Requirement",
-                    description: "Tahap pengumpulan dan analisis kebutuhan pengguna.",
-                    content: "Pada tahap Requirement, tim bekerja sama dengan Product Owner dan stakeholder untuk mengumpulkan serta memprioritaskan kebutuhan pengguna. Hasil dari tahap ini adalah Product Backlog yang berisi daftar kebutuhan (user stories) yang akan dikerjakan dalam sprint-sprint mendatang."
-                },
-                AG_DESIGN: {
-                    meshName: "AG_DESIGN",
-                    title: "Design",
-                    description: "Tahap perancangan solusi berdasarkan kebutuhan yang telah ditentukan.",
-                    content: "Tahap Design berfokus pada perancangan arsitektur dan desain teknis untuk setiap user story yang akan dikerjakan. Tim mendiskusikan pendekatan teknis, membuat sketsa antarmuka, dan menentukan struktur data yang sesuai."
-                },
-                AG_DEVELOPMENT: {
-                    meshName: "AG_DEVELOPMENT",
-                    title: "Development",
-                    description: "Tahap implementasi kode program sesuai dengan desain yang telah disepakati.",
-                    content: "Pada tahap Development, para developer mulai menulis kode program untuk setiap user story yang telah didesain. Pengembangan dilakukan secara iteratif dengan siklus sprint yang pendek (biasanya 1-4 minggu)."
-                },
-                AG_TESTING: {
-                    meshName: "AG_TESTING",
-                    title: "Testing",
-                    description: "Tahap pengujian untuk memastikan kualitas perangkat lunak.",
-                    content: "Tahap Testing meliputi berbagai jenis pengujian seperti unit testing, integration testing, dan acceptance testing. Tim QA bekerja sama dengan developer untuk memastikan setiap fitur berfungsi sesuai kriteria penerimaan."
-                },
-                AG_DEPLOYMENT: {
-                    meshName: "AG_DEPLOYMENT",
-                    title: "Deployment",
-                    description: "Tahap penyebaran fitur ke lingkungan produksi.",
-                    content: "Tahap Deployment meliputi proses rilis fitur-fitur yang telah selesai diuji ke lingkungan produksi. Tim menggunakan praktik CI/CD untuk mengotomatiskan proses build, pengujian, dan deployment."
-                },
-                AG_REVIEW: {
-                    meshName: "AG_REVIEW",
-                    title: "Review",
-                    description: "Tahap evaluasi hasil kerja dan feedback dari stakeholder.",
-                    content: "Sprint Review diadakan di akhir sprint untuk mendemonstrasikan hasil kerja yang telah selesai kepada stakeholder. Tim menunjukkan fitur-fitur baru yang telah berfungsi dan menerima feedback langsung."
-                }
-            },
-            rad: {
-                RAD_REQUIREMENT: { meshName: "RAD_REQUIREMENT", title: "Requirement Planning", description: "Tahap identifikasi kebutuhan proyek secara awal.", content: "Requirement Planning dalam RAD adalah tahap awal di mana stakeholder dan pengembang melakukan brainstorming untuk mengidentifikasi kebutuhan proyek." },
-                RAD_DESIGN: { meshName: "RAD_DESIGN", title: "User Design", description: "Tahap desain prototipe interaktif dengan feedback pengguna.", content: "User Design adalah tahap kunci dalam RAD di mana pengembang dan pengguna akhir bekerja sama secara intensif untuk mendesain prototipe." },
-                RAD_CONSTRUCTION: { meshName: "RAD_CONSTRUCTION", title: "Construction", description: "Tahap pembangunan sistem final dengan tools otomatisasi.", content: "Construction adalah tahap di mana prototipe yang telah divalidasi dikembangkan menjadi sistem production-ready." },
-                RAD_CUTOVER: { meshName: "RAD_CUTOVER", title: "Cutover", description: "Tahap penyebaran sistem ke lingkungan produksi.", content: "Cutover adalah tahap akhir di mana sistem yang telah selesai dibangun dan diuji disebarkan ke lingkungan produksi." },
-            }
-        };
-
-        let stepsData = { ...(FALLBACK_STEPS[methodSlug] || {}) };
+        // ================= STATE =================
+        let methodCfg = { targetIndex: 1, modelPath: "/models/agile-new.glb", name: methodSlug };
+        let stepsData = {};
         let currentStep = null;
         let isTracking = false;
         let modelLoaded = false;
+        let modelLoading = false;
+        let dataLoaded = false;
 
-        // ================= AMBIL DATA DARI DATABASE =================
-        async function loadSteps() {
+        // ================= UI INIT (show something immediately) =================
+        document.getElementById("method-title").textContent = "Memuat...";
+
+        // ================= LOAD DATA FROM DATABASE (dynamic-first) =================
+        const API_TIMEOUT = 5000;
+
+        async function loadFromDB() {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), API_TIMEOUT);
             try {
-                const res = await fetch("/api/steps");
-                if (!res.ok) return;
-                const list = await res.json();
-                list.forEach((s) => {
-                    if (FALLBACK_STEPS[methodSlug] && FALLBACK_STEPS[methodSlug][s.meshName]) {
-                        stepsData[s.meshName] = s;
-                    }
-                });
+                const res = await fetch("/api/methods/by-slug/" + methodSlug, { signal: controller.signal });
+                clearTimeout(timer);
+                if (!res.ok) throw new Error("API " + res.status);
+                const data = await res.json();
+
+                // Update method config dari DB
+                methodCfg = {
+                    targetIndex: data.mindTargetIndex ?? 1,
+                    modelPath: data.modelPath || methodCfg.modelPath,
+                    name: data.name || methodSlug,
+                };
+
+                // Update UI
+                document.getElementById("target-entity").setAttribute("mindar-image-target", "targetIndex: " + methodCfg.targetIndex);
+                document.title = "AR SDLC - " + methodCfg.name;
+                document.getElementById("method-title").textContent = "Metode " + methodCfg.name;
+
+                // Build stepsData dari DB — langsung pakai tanpa match fallback
+                stepsData = {};
+                if (data.steps && Array.isArray(data.steps)) {
+                    data.steps.forEach(function(s) {
+                        if (s.meshName) stepsData[s.meshName] = s;
+                    });
+                }
+
+                dataLoaded = true;
+                console.log("Data loaded from DB:", methodCfg.name, "steps:", Object.keys(stepsData).length);
             } catch (e) {
-                console.warn("Gagal ambil data dari API, pakai data fallback.");
+                clearTimeout(timer);
+                console.warn("DB load failed (" + e.message + "), using fallback config");
+                // Apply fallback config
+                document.getElementById("target-entity").setAttribute("mindar-image-target", "targetIndex: " + methodCfg.targetIndex);
+                document.title = "AR SDLC - " + methodCfg.name;
+                document.getElementById("method-title").textContent = "Metode " + methodCfg.name;
             }
         }
 
@@ -356,7 +321,6 @@
         }
 
         // ================= STATUS =================
-        let modelLoading = false;
 
         function setStatus(text) {
             document.getElementById("status-pill").textContent = text;
@@ -704,8 +668,8 @@
         }
 
         // ================= INIT =================
-        function init() {
-            loadSteps();
+        async function init() {
+            await loadFromDB();
 
             const sceneEl = document.getElementById("ar-scene");
             const targetEl = document.getElementById("target-entity");

@@ -27,6 +27,7 @@ export const metadata: Metadata = {
   title: "AR SDLC Learning Media",
   description:
     "Interactive WebAR learning media for Software Development Life Cycle",
+  manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

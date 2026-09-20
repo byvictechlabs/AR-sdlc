@@ -2,6 +2,7 @@ import Link from "next/link";
 import { db } from "@/db";
 import { sdlcMethods } from "@/db/schema";
 import { asc, eq } from "drizzle-orm";
+import ModelPreloader from "@/components/ModelPreloader";
 import { 
   ArrowLeft, 
   Lightbulb,
@@ -44,6 +45,7 @@ export default async function MulaiBelajarPage() {
   return (
     // Background putih bersih menyesuaikan gambar referensi
     <div className="relative min-h-dvh bg-white pb-20 overflow-hidden">
+      <ModelPreloader />
       
       {/* --- HEADER (Biru Gradasi) --- */}
       <header className="relative z-50 bg-gradient-to-r from-blue-600 to-blue-400 shadow-md">
