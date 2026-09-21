@@ -217,7 +217,7 @@
                 <a-entity
                     id="model-entity"
                     position="0 0 0"
-                    scale="0.5 0.5 0.5"></a-entity>
+                    scale="0.2 0.2 0.2"></a-entity>
             </a-entity>
         </a-scene>
 
@@ -495,7 +495,7 @@
             const raycaster = new AFRAME.THREE.Raycaster();
             raycaster.setFromCamera(new AFRAME.THREE.Vector2(nx, ny), camera);
 
-            const intersects = raycaster.intersectObjects(meshes, false);
+            const intersects = raycaster.intersectObjects(meshes, true);
             if (intersects.length > 0) {
                 const name = resolveMeshName(intersects[0].object);
                 if (name) return name;
@@ -504,7 +504,7 @@
             // Fallback: tahap terdekat dengan titik klik berdasarkan proyeksi layar.
             const worldPos = new AFRAME.THREE.Vector3();
             let bestName = null;
-            let bestDist = 160;
+            let bestDist = 250;
             for (const mesh of meshes) {
                 const name = resolveMeshName(mesh);
                 if (!name) continue;
@@ -587,8 +587,8 @@
             if (pts.size === 1) {
                 const dx = x - gesture.lastX;
                 const dy = y - gesture.lastY;
-                if (Math.abs(x - gesture.startX) > 10 ||
-                    Math.abs(y - gesture.startY) > 10) {
+                if (Math.abs(x - gesture.startX) > 15 ||
+                    Math.abs(y - gesture.startY) > 15) {
                     gesture.dragging = true;
                 }
                 if (gesture.dragging && modelLoaded) rotateModel(dx, dy);
@@ -599,7 +599,7 @@
                 const d = pointDist(arr[0], arr[1]);
                 const model = document.getElementById("model-entity");
                 if (model && model.object3D) {
-                    const s = clamp(gesture.pinchBaseScale * (d / gesture.pinchStartDist), 0.3, 3);
+                    const s = clamp(gesture.pinchBaseScale * (d / gesture.pinchStartDist), 0.08, 3);
                     model.object3D.scale.set(s, s, s);
                 }
             }
@@ -635,9 +635,9 @@
             if (!modelLoaded) return;
             const model = document.getElementById("model-entity");
             if (!model || !model.object3D) return;
-            model.object3D.rotation.y += dx * 0.01;
+            model.object3D.rotation.y += dx * 0.025;
             model.object3D.rotation.x = clamp(
-                model.object3D.rotation.x + dy * 0.01,
+                model.object3D.rotation.x + dy * 0.025,
                 -1.6, 1.6
             );
         }
