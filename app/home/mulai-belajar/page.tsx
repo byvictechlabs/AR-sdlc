@@ -83,7 +83,7 @@ export default async function MulaiBelajarPage() {
             {methods.map((method, index) => {
               const Icon = getMethodIcon(method.name);
               return (
-                <Link
+                <a
                   key={method.id}
                   href={`/learn/ar.html?method=${method.slug}`}
                   className="group flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-all duration-200 hover:border-blue-300 hover:shadow-md active:scale-95"
@@ -107,7 +107,7 @@ export default async function MulaiBelajarPage() {
                       </p>
                     ) : null}
                   </div>
-                </Link>
+                </a>
               );
             })}
           </div>

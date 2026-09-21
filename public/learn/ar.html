@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    <title>AR SDLC - Agile</title>
+    <title>AR SDLC</title>
 
     <!-- A-Frame + MindAR -->
     <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
@@ -241,7 +241,7 @@
                 <a-entity
                     id="model-entity"
                     position="0 0 0"
-                    scale="0.2 0.2 0.2"></a-entity>
+                    scale="0.35 0.35 0.35"></a-entity>
             </a-entity>
         </a-scene>
 
@@ -303,9 +303,11 @@
         // ================= URL PARAMS =================
         const urlParams = new URLSearchParams(window.location.search);
         const methodSlug = urlParams.get("method") || "agile";
+        // Fix bug: kadang slug keisi "ar.html" dari URL routing — strip .html
+        const cleanSlug = methodSlug.replace(/\.html$/, "") || "agile";
 
         // ================= STATE =================
-        let methodCfg = { targetIndex: 1, modelPath: "https://models.byvictech.site/models/agile-new.glb", name: methodSlug };
+        let methodCfg = { targetIndex: 1, modelPath: "https://models.byvictech.site/models/agile-new.glb", name: cleanSlug };
         let stepsData = {};
         let currentStep = null;
         let isTracking = false;
@@ -323,7 +325,7 @@
             const controller = new AbortController();
             const timer = setTimeout(() => controller.abort(), API_TIMEOUT);
             try {
-                const res = await fetch("/api/methods/by-slug/" + methodSlug, { signal: controller.signal });
+                const res = await fetch("/api/methods/by-slug/" + cleanSlug, { signal: controller.signal });
                 clearTimeout(timer);
                 if (!res.ok) throw new Error("API " + res.status);
                 const data = await res.json();
@@ -332,7 +334,7 @@
                 methodCfg = {
                     targetIndex: data.mindTargetIndex ?? 1,
                     modelPath: data.modelPath || methodCfg.modelPath,
-                    name: data.name || methodSlug,
+                    name: data.name || cleanSlug,
                 };
 
                 // Update UI
@@ -427,9 +429,7 @@
             }, 2500);
         }
 
-        // ================= MODEL DOWNLOAD WITH PROGRESS + CACHE =================
-        const MODEL_CACHE = "ar-models-v1";
-
+        // ================= MODEL DOWNLOAD WITH PROGRESS =================
         function loadModelWithProgress(url) {
             const overlay = document.getElementById("model-loading-overlay");
             const fill = document.getElementById("progress-fill");
@@ -437,36 +437,8 @@
 
             overlay.classList.remove("hidden", "fade-out");
             fill.style.width = "0%";
-            text.textContent = "Mengecek cache...";
-            setStatus("Memuat model 3D...");
-
-            // Cek Cache API dulu
-            if ("caches" in window) {
-                caches.open(MODEL_CACHE).then(function(cache) {
-                    return cache.match(url);
-                }).then(function(cached) {
-                    if (cached) {
-                        console.log("[Model] Cache hit:", url);
-                        fill.style.width = "100%";
-                        text.textContent = "Memuat dari cache...";
-                        return cached.blob().then(function(blob) {
-                            var blobURL = URL.createObjectURL(blob);
-                            var model = document.getElementById("model-entity");
-                            model.setAttribute("gltf-model", blobURL);
-                        });
-                    } else {
-                        fetchAndCache(url, fill, text, overlay);
-                    }
-                }).catch(function() {
-                    fetchAndCache(url, fill, text, overlay);
-                });
-            } else {
-                fetchAndCache(url, fill, text, overlay);
-            }
-        }
-
-        function fetchAndCache(url, fill, text, overlay) {
             text.textContent = "Mengunduh...";
+            setStatus("Memuat model 3D...");
 
             fetch(url)
                 .then(function(response) {
@@ -480,18 +452,8 @@
                         return reader.read().then(function(result) {
                             if (result.done) {
                                 var blob = new Blob(chunks, {
-                                    type: response.headers.get("Content-Type") || "model/gltf-binary"
+                                    type: "model/gltf-binary"
                                 });
-                                // Simpan ke Cache API
-                                if ("caches" in window) {
-                                    var responseToCache = new Response(blob, {
-                                        headers: { "Content-Type": "model/gltf-binary" }
-                                    });
-                                    caches.open(MODEL_CACHE).then(function(cache) {
-                                        cache.put(url, responseToCache);
-                                        console.log("[Model] Cached:", url);
-                                    });
-                                }
                                 var blobURL = URL.createObjectURL(blob);
                                 fill.style.width = "100%";
                                 text.textContent = "Memuat model ke kamera...";
@@ -681,8 +643,8 @@
             if (pts.size === 1) {
                 const dx = x - gesture.lastX;
                 const dy = y - gesture.lastY;
-                if (Math.abs(x - gesture.startX) > 15 ||
-                    Math.abs(y - gesture.startY) > 15) {
+                if (Math.abs(x - gesture.startX) > 8 ||
+                    Math.abs(y - gesture.startY) > 8) {
                     gesture.dragging = true;
                 }
                 if (gesture.dragging && modelLoaded) rotateModel(dx, dy);
@@ -874,11 +836,13 @@
 
         // ================= INIT =================
         async function init() {
-            await loadFromDB();
-
             const sceneEl = document.getElementById("ar-scene");
             const targetEl = document.getElementById("target-entity");
             const modelEl = document.getElementById("model-entity");
+
+            // Attach event listeners DULU — jangan await loadFromDB dulu!
+            // Kalau await loadFromDB() duluan, scene "loaded" event fires sebelum
+            // listener terpasang → setupGestures() ga pernah jalan.
 
             sceneEl.addEventListener("arError", () => {
                 showError("Gagal mengakses kamera. Aktifkan izin kamera di browser, lalu coba lagi.");
@@ -927,6 +891,14 @@
                 setStatus("Arahkan kamera ke marker AR");
                 setupGestures();
             });
+
+            // Load data dari DB di belakang — TANPA nge-block event listeners
+            loadFromDB();
+        }
+
+        // ================= SERVICE WORKER (cache model) =================
+        if ("serviceWorker" in navigator) {
+            navigator.serviceWorker.register("/sw.js").catch(function() {});
         }
 
         if (window.speechSynthesis) {
