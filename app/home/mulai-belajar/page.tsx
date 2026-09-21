@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { unstable_cache } from "next/cache";
 import { db } from "@/db";
 import { sdlcMethods } from "@/db/schema";
 import { asc, eq } from "drizzle-orm";
@@ -33,16 +34,24 @@ const getMethodIcon = (name: string): LucideIcon => {
   return RefreshCw;
 };
 
+const getPublishedMethods = unstable_cache(
+  async () =>
+    db
+      .select()
+      .from(sdlcMethods)
+      .where(eq(sdlcMethods.status, "published"))
+      .orderBy(asc(sdlcMethods.sortOrder)),
+  ["published-methods"],
+  { revalidate: 3600, tags: ["methods"] }
+);
+
 export default async function MulaiBelajarPage() {
-  const methods = await db
-    .select()
-    .from(sdlcMethods)
-    .where(eq(sdlcMethods.status, "published"))
-    .orderBy(asc(sdlcMethods.sortOrder));
+  const methods = await getPublishedMethods();
+  const modelPaths = methods.map((m) => m.modelPath).filter(Boolean);
 
   return (
     <div className="relative flex h-dvh flex-col bg-white overflow-hidden">
-      <ModelPreloader />
+      <ModelPreloader modelPaths={modelPaths} />
 
       {/* --- HEADER --- */}
       <header className="relative z-50 bg-gradient-to-r from-blue-600 to-blue-400 shadow-md shrink-0">

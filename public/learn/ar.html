@@ -150,6 +150,50 @@
         }
 
         .hidden { display: none !important; }
+
+        /* ===== MODEL LOADING OVERLAY ===== */
+        #model-loading-overlay {
+            position: fixed; inset: 0; z-index: 150;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            background: rgba(11, 18, 32, 0.85);
+            backdrop-filter: blur(8px);
+            color: #fff; text-align: center;
+            transition: opacity 0.4s ease;
+        }
+        #model-loading-overlay.fade-out {
+            opacity: 0; pointer-events: none;
+        }
+        .loading-ring {
+            width: 72px; height: 72px;
+            border: 4px solid rgba(255,255,255,0.12);
+            border-top-color: #60a5fa;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .loading-title {
+            font-size: 16px; font-weight: 700;
+            margin-top: 20px; letter-spacing: 0.3px;
+        }
+        .progress-track {
+            width: 220px; height: 6px;
+            background: rgba(255,255,255,0.12);
+            border-radius: 3px; margin-top: 18px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%; width: 0%;
+            background: linear-gradient(90deg, #3b82f6, #60a5fa);
+            border-radius: 3px;
+            transition: width 0.25s ease;
+        }
+        .progress-text {
+            margin-top: 10px;
+            font-size: 12px; font-weight: 500;
+            opacity: 0.7;
+        }
     </style>
 </head>
 <body>
@@ -201,6 +245,14 @@
         <button class="btn-retry" onclick="location.reload()">Coba Lagi</button>
     </div>
 
+    <!-- MODEL LOADING OVERLAY -->
+    <div id="model-loading-overlay" class="hidden">
+        <div class="loading-ring"></div>
+        <div class="loading-title">Memuat Model 3D</div>
+        <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+        <div class="progress-text" id="progress-text">Mengunduh...</div>
+    </div>
+
     <!-- POPUP DETAIL -->
     <div id="popup-backdrop" class="hidden" onclick="closePopup()"></div>
     <div id="popup-wrap" class="hidden">
@@ -226,7 +278,7 @@
         const methodSlug = urlParams.get("method") || "agile";
 
         // ================= STATE =================
-        let methodCfg = { targetIndex: 1, modelPath: "/models/agile-fix.glb", name: methodSlug };
+        let methodCfg = { targetIndex: 1, modelPath: "/models/agile-2.glb", name: methodSlug };
         let stepsData = {};
         let currentStep = null;
         let isTracking = false;
@@ -333,6 +385,65 @@
 
         function hideError() {
             document.getElementById("error-banner").style.display = "none";
+        }
+
+        // ================= MODEL DOWNLOAD WITH PROGRESS =================
+        function loadModelWithProgress(url) {
+            const overlay = document.getElementById("model-loading-overlay");
+            const fill = document.getElementById("progress-fill");
+            const text = document.getElementById("progress-text");
+
+            overlay.classList.remove("hidden", "fade-out");
+            fill.style.width = "0%";
+            text.textContent = "Mengunduh...";
+            setStatus("Memuat model 3D...");
+
+            fetch(url)
+                .then(function(response) {
+                    if (!response.ok) throw new Error("HTTP " + response.status);
+                    var contentLength = +(response.headers.get("Content-Length") || 0);
+                    var reader = response.body.getReader();
+                    var received = 0;
+                    var chunks = [];
+
+                    function pump() {
+                        return reader.read().then(function(result) {
+                            if (result.done) {
+                                var blob = new Blob(chunks, {
+                                    type: response.headers.get("Content-Type") || "model/gltf-binary"
+                                });
+                                var blobURL = URL.createObjectURL(blob);
+                                fill.style.width = "100%";
+                                text.textContent = "Memuat model ke kamera...";
+                                var model = document.getElementById("model-entity");
+                                model.setAttribute("gltf-model", blobURL);
+                                return;
+                            }
+                            chunks.push(result.value);
+                            received += result.value.length;
+
+                            if (contentLength > 0) {
+                                var pct = Math.round((received / contentLength) * 100);
+                                fill.style.width = pct + "%";
+                                text.textContent = "Mengunduh... " + pct + "% (" +
+                                    (received / 1048576).toFixed(1) + " / " +
+                                    (contentLength / 1048576).toFixed(1) + " MB)";
+                            } else {
+                                text.textContent = "Mengunduh... " +
+                                    (received / 1048576).toFixed(1) + " MB";
+                            }
+                            return pump();
+                        });
+                    }
+                    return pump();
+                })
+                .catch(function(e) {
+                    console.error("Model download failed:", e);
+                    overlay.classList.add("hidden");
+                    showError("Gagal memuat model 3D. Cek koneksi internet, lalu coba lagi.");
+                    setStatus("Model 3D gagal dimuat");
+                    modelLoading = false;
+                });
         }
 
         // ================= CLICK / RAYCASTER =================
@@ -689,9 +800,7 @@
                 hideError();
                 if (!modelLoaded && !modelLoading) {
                     modelLoading = true;
-                    setStatus("Memuat model 3D...");
-                    const model = document.getElementById("model-entity");
-                    model.setAttribute("gltf-model", methodCfg.modelPath);
+                    loadModelWithProgress(methodCfg.modelPath);
                 } else if (modelLoaded) {
                     setStatus("Ketuk bagian model untuk melihat penjelasan");
                 }
@@ -705,14 +814,19 @@
 
             modelEl.addEventListener("model-loaded", () => {
                 modelLoaded = true;
-                // Urutan rotasi YXZ membuat putaran horizontal & vertikal lebih natural
+                const overlay = document.getElementById("model-loading-overlay");
+                overlay.classList.add("fade-out");
+                setTimeout(() => overlay.classList.add("hidden"), 400);
                 if (modelEl.object3D) modelEl.object3D.rotation.order = "YXZ";
                 if (isTracking) setStatus("Ketuk bagian model untuk melihat penjelasan");
             });
 
             modelEl.addEventListener("model-error", () => {
+                var overlay = document.getElementById("model-loading-overlay");
+                overlay.classList.add("hidden");
                 showError("Gagal memuat model 3D. Cek koneksi internet, lalu coba lagi.");
                 setStatus("Model 3D gagal dimuat");
+                modelLoading = false;
             });
 
             sceneEl.addEventListener("loaded", () => {

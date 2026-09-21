@@ -2,45 +2,31 @@
 
 import { useEffect } from "react";
 
-export default function ModelPreloader() {
+interface ModelPreloaderProps {
+  modelPaths: string[];
+}
+
+export default function ModelPreloader({ modelPaths }: ModelPreloaderProps) {
   useEffect(() => {
-    const METHODS_API = "/api/methods";
-
-    async function preloadModels() {
-      try {
-        const res = await fetch(METHODS_API);
-        if (!res.ok) return;
-        const methods = await res.json();
-
-        for (const m of methods) {
-          if (m.modelPath) {
-            const link = document.createElement("link");
-            link.rel = "prefetch";
-            link.href = m.modelPath;
-            link.as = "fetch";
-            link.crossOrigin = "anonymous";
-            document.head.appendChild(link);
-            console.log("[Preloader] Prefetching:", m.modelPath);
-          }
-        }
-
-        const markerRes = await fetch("/markers/targets.mind", { method: "HEAD" });
-        if (markerRes.ok) {
-          const link = document.createElement("link");
-          link.rel = "prefetch";
-          link.href = "/markers/targets.mind";
-          link.as = "fetch";
-          link.crossOrigin = "anonymous";
-          document.head.appendChild(link);
-          console.log("[Preloader] Prefetching: /markers/targets.mind");
-        }
-      } catch (e) {
-        console.warn("[Preloader] Failed:", e);
-      }
+    for (const path of modelPaths) {
+      if (!path) continue;
+      const link = document.createElement("link");
+      link.rel = "prefetch";
+      link.href = path;
+      link.as = "fetch";
+      link.crossOrigin = "anonymous";
+      document.head.appendChild(link);
+      console.log("[Preloader] Prefetching:", path);
     }
 
-    preloadModels();
-  }, []);
+    const markerLink = document.createElement("link");
+    markerLink.rel = "prefetch";
+    markerLink.href = "/markers/targets.mind";
+    markerLink.as = "fetch";
+    markerLink.crossOrigin = "anonymous";
+    document.head.appendChild(markerLink);
+    console.log("[Preloader] Prefetching: /markers/targets.mind");
+  }, [modelPaths]);
 
   return null;
 }
