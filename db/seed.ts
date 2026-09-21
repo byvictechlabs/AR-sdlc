@@ -50,7 +50,7 @@ async function main() {
       slug: "agile",
       description:
         "An iterative approach to software development that focuses on collaboration, flexibility, and delivering working software in short cycles called sprints.",
-      modelPath: "/models/agile.glb",
+      modelPath: "https://models.byvictech.site/models/agile-new.glb",
       markerPath: "/markers/agile.png",
       status: "published" as const,
       sortOrder: 2,

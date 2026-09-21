@@ -194,6 +194,30 @@
             font-size: 12px; font-weight: 500;
             opacity: 0.7;
         }
+
+        /* ===== MESH CLICK FEEDBACK ===== */
+        #mesh-feedback {
+            position: absolute; bottom: 80px; left: 50%;
+            transform: translateX(-50%); z-index: 60;
+            padding: 10px 20px; border-radius: 14px;
+            font-size: 13px; font-weight: 600;
+            backdrop-filter: blur(8px);
+            pointer-events: none;
+            opacity: 0; transition: opacity 0.25s ease, transform 0.25s ease;
+            max-width: 85%; text-align: center;
+        }
+        #mesh-feedback.show {
+            opacity: 1; transform: translateX(-50%) translateY(0);
+        }
+        #mesh-feedback.success {
+            background: rgba(34, 197, 94, 0.9); color: #fff;
+        }
+        #mesh-feedback.notfound {
+            background: rgba(251, 191, 36, 0.9); color: #1e293b;
+        }
+        #mesh-feedback.nomesh {
+            background: rgba(100, 116, 139, 0.85); color: #fff;
+        }
     </style>
 </head>
 <body>
@@ -239,6 +263,9 @@
     </div>
     <div id="status-pill">Memuat AR...</div>
 
+    <!-- MESH CLICK FEEDBACK -->
+    <div id="mesh-feedback"></div>
+
     <!-- ERROR BANNER -->
     <div id="error-banner">
         <span id="error-msg"></span>
@@ -278,7 +305,7 @@
         const methodSlug = urlParams.get("method") || "agile";
 
         // ================= STATE =================
-        let methodCfg = { targetIndex: 1, modelPath: "/models/agile-2.glb", name: methodSlug };
+        let methodCfg = { targetIndex: 1, modelPath: "https://models.byvictech.site/models/agile-new.glb", name: methodSlug };
         let stepsData = {};
         let currentStep = null;
         let isTracking = false;
@@ -387,7 +414,22 @@
             document.getElementById("error-banner").style.display = "none";
         }
 
-        // ================= MODEL DOWNLOAD WITH PROGRESS =================
+        // ================= MESH CLICK FEEDBACK =================
+        var feedbackTimer = null;
+
+        function showMeshFeedback(text, type) {
+            var el = document.getElementById("mesh-feedback");
+            el.textContent = text;
+            el.className = type + " show";
+            clearTimeout(feedbackTimer);
+            feedbackTimer = setTimeout(function() {
+                el.classList.remove("show");
+            }, 2500);
+        }
+
+        // ================= MODEL DOWNLOAD WITH PROGRESS + CACHE =================
+        const MODEL_CACHE = "ar-models-v1";
+
         function loadModelWithProgress(url) {
             const overlay = document.getElementById("model-loading-overlay");
             const fill = document.getElementById("progress-fill");
@@ -395,8 +437,36 @@
 
             overlay.classList.remove("hidden", "fade-out");
             fill.style.width = "0%";
-            text.textContent = "Mengunduh...";
+            text.textContent = "Mengecek cache...";
             setStatus("Memuat model 3D...");
+
+            // Cek Cache API dulu
+            if ("caches" in window) {
+                caches.open(MODEL_CACHE).then(function(cache) {
+                    return cache.match(url);
+                }).then(function(cached) {
+                    if (cached) {
+                        console.log("[Model] Cache hit:", url);
+                        fill.style.width = "100%";
+                        text.textContent = "Memuat dari cache...";
+                        return cached.blob().then(function(blob) {
+                            var blobURL = URL.createObjectURL(blob);
+                            var model = document.getElementById("model-entity");
+                            model.setAttribute("gltf-model", blobURL);
+                        });
+                    } else {
+                        fetchAndCache(url, fill, text, overlay);
+                    }
+                }).catch(function() {
+                    fetchAndCache(url, fill, text, overlay);
+                });
+            } else {
+                fetchAndCache(url, fill, text, overlay);
+            }
+        }
+
+        function fetchAndCache(url, fill, text, overlay) {
+            text.textContent = "Mengunduh...";
 
             fetch(url)
                 .then(function(response) {
@@ -412,6 +482,16 @@
                                 var blob = new Blob(chunks, {
                                     type: response.headers.get("Content-Type") || "model/gltf-binary"
                                 });
+                                // Simpan ke Cache API
+                                if ("caches" in window) {
+                                    var responseToCache = new Response(blob, {
+                                        headers: { "Content-Type": "model/gltf-binary" }
+                                    });
+                                    caches.open(MODEL_CACHE).then(function(cache) {
+                                        cache.put(url, responseToCache);
+                                        console.log("[Model] Cached:", url);
+                                    });
+                                }
                                 var blobURL = URL.createObjectURL(blob);
                                 fill.style.width = "100%";
                                 text.textContent = "Memuat model ke kamera...";
@@ -501,21 +581,32 @@
                 if (name) return name;
             }
 
-            // Fallback: tahap terdekat dengan titik klik berdasarkan proyeksi layar.
+            // Fallback: cari mesh yang menutupi titik klik pakai bounding sphere.
+            // Lebih akurat dari sekadar center karena memperhitungkan ukuran mesh di layar.
             const worldPos = new AFRAME.THREE.Vector3();
+            const box = new AFRAME.THREE.Box3();
+            const size = new AFRAME.THREE.Vector3();
             let bestName = null;
-            let bestDist = 250;
+            let bestDist = Infinity;
             for (const mesh of meshes) {
                 const name = resolveMeshName(mesh);
                 if (!name) continue;
+                box.setFromObject(mesh);
+                box.getSize(size);
+                const radius = size.length() * 0.5;
                 mesh.getWorldPosition(worldPos);
                 const projected = worldPos.project(camera);
-                // objek harus berada di depan kamera (z berada di rentang -1..1)
                 if (projected.z < -1 || projected.z > 1) continue;
                 const sx = (projected.x + 1) / 2 * rect.width + rect.left;
                 const sy = (-projected.y + 1) / 2 * rect.height + rect.top;
+                // Estimasi radius mesh di layar (pixels)
+                const screenRadius = Math.max(
+                    (box.max.x - box.min.x) * 0.5 * rect.width * 0.5,
+                    (box.max.y - box.min.y) * 0.5 * rect.height * 0.5,
+                    40
+                );
                 const d = Math.hypot(sx - clientX, sy - clientY);
-                if (d < bestDist) {
+                if (d < screenRadius + 30 && d < bestDist) {
                     bestDist = d;
                     bestName = name;
                 }
@@ -531,13 +622,16 @@
                 const name = findStageNameAt(clientX, clientY, camera);
                 if (!name) continue;
                 if (stepsData[name]) {
+                    showMeshFeedback("✓ " + stepsData[name].title, "success");
                     openPopup(stepsData[name]);
                     return;
                 }
-                // Bantu trace: mesh ketemu tapi belum ada di data admin
+                // Mesh ketemu tapi ga ada di data admin
                 console.warn("Mesh ditemukan tapi tidak ada di data admin:", name);
+                showMeshFeedback("⚠ Mesh \"" + name + "\" belum ada penjelasan", "notfound");
+                return;
             }
-            setStatus("Ketuk bagian model untuk melihat penjelasan");
+            showMeshFeedback("Tidak ada bagian model yang terdeteksi", "nomesh");
         }
 
         // ================= GESTURE (tap, putar, zoom) =================
