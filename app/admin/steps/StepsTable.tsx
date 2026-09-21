@@ -432,7 +432,7 @@ export function StepsTable({
                 : "Add a new learning step."}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
+          <div className="max-h-[70vh] overflow-y-auto space-y-4 py-2 pr-1">
             <FormField
               label="Method"
               htmlFor="methodId"

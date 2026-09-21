@@ -445,7 +445,7 @@ export function MethodsTable({ initialData }: { initialData: Method[] }) {
                 : "Add a new SDLC method."}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
+          <div className="max-h-[70vh] overflow-y-auto space-y-4 py-2 pr-1">
             <div className="grid grid-cols-2 gap-4">
               <FormField label="Name" htmlFor="name" required error={errors.name}>
                 <Input
