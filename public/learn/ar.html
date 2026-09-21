@@ -337,6 +337,19 @@
                     name: data.name || cleanSlug,
                 };
 
+                console.log("[DB] Method:", methodCfg.name);
+                console.log("[DB] Model source:", data.modelPath ? "DATABASE" : "FALLBACK (hardcoded)");
+                console.log("[DB] Model path:", methodCfg.modelPath);
+                console.log("[DB] Target index:", methodCfg.targetIndex);
+
+                // On-screen debug: tampilkan info DB di layar (7 detik)
+                var dbInfo = document.createElement("div");
+                dbInfo.style.cssText = "position:fixed;top:10px;left:10px;right:10px;background:rgba(0,0,0,0.85);color:#0f0;font-size:11px;padding:10px;border-radius:8px;z-index:9999;font-family:monospace;";
+                var srcLabel = data.modelPath ? "DATABASE" : "FALLBACK";
+                dbInfo.innerHTML = "<b>DB Info:</b><br>Method: " + methodCfg.name + "<br>Source: " + srcLabel + "<br>Model: " + methodCfg.modelPath + "<br>Target: " + methodCfg.targetIndex;
+                document.body.appendChild(dbInfo);
+                setTimeout(() => dbInfo.remove(), 7000);
+
                 // Update UI
                 document.getElementById("target-entity").setAttribute("mindar-image-target", "targetIndex: " + methodCfg.targetIndex);
                 document.title = "AR SDLC - " + methodCfg.name;
@@ -355,6 +368,7 @@
             } catch (e) {
                 clearTimeout(timer);
                 console.warn("DB load failed (" + e.message + "), using fallback config");
+                console.log("[Fallback] Using hardcoded model:", methodCfg.modelPath);
                 // Apply fallback config
                 document.getElementById("target-entity").setAttribute("mindar-image-target", "targetIndex: " + methodCfg.targetIndex);
                 document.title = "AR SDLC - " + methodCfg.name;
@@ -431,6 +445,17 @@
 
         // ================= MODEL DOWNLOAD WITH PROGRESS =================
         function loadModelWithProgress(url) {
+            console.log("[Model] Loading from URL:", url);
+            console.log("[Model] Source:", url.startsWith("http") ? "REMOTE (R2/CDN)" : "LOCAL (project)");
+
+            // On-screen debug: tampilkan info model di layar (7 detik)
+            var modelInfo = document.createElement("div");
+            modelInfo.style.cssText = "position:fixed;top:50px;left:10px;right:10px;background:rgba(0,0,0,0.85);color:#0ff;font-size:11px;padding:10px;border-radius:8px;z-index:9999;font-family:monospace;";
+            var sourceLabel = url.startsWith("http") ? "REMOTE (R2/CDN)" : "LOCAL (project)";
+            modelInfo.innerHTML = "<b>Model Info:</b><br>Source: " + sourceLabel + "<br>URL: " + url;
+            document.body.appendChild(modelInfo);
+            setTimeout(() => modelInfo.remove(), 7000);
+
             const overlay = document.getElementById("model-loading-overlay");
             const fill = document.getElementById("progress-fill");
             const text = document.getElementById("progress-text");
@@ -455,6 +480,7 @@
                                     type: "model/gltf-binary"
                                 });
                                 var blobURL = URL.createObjectURL(blob);
+                                console.log("[Model] Download complete. Size:", (received / 1048576).toFixed(1) + " MB");
                                 fill.style.width = "100%";
                                 text.textContent = "Memuat model ke kamera...";
                                 var model = document.getElementById("model-entity");
