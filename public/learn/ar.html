@@ -583,6 +583,9 @@
             for (const camera of getCameras()) {
                 const name = findStageNameAt(clientX, clientY, camera);
                 if (!name) continue;
+                // DEBUG: tampilkan nama mesh yang terdeteksi di layar
+                showMeshFeedback("Mesh: " + name, "nomesh");
+                console.log("[Click] Detected mesh:", name, "| stepsData keys:", Object.keys(stepsData));
                 if (stepsData[name]) {
                     showMeshFeedback("✓ " + stepsData[name].title, "success");
                     openPopup(stepsData[name]);
@@ -590,7 +593,6 @@
                 }
                 // Mesh ketemu tapi ga ada di data admin
                 console.warn("Mesh ditemukan tapi tidak ada di data admin:", name);
-                showMeshFeedback("⚠ Mesh \"" + name + "\" belum ada penjelasan", "notfound");
                 return;
             }
             showMeshFeedback("Tidak ada bagian model yang terdeteksi", "nomesh");
@@ -877,6 +879,23 @@
                 setTimeout(() => overlay.classList.add("hidden"), 400);
                 if (modelEl.object3D) modelEl.object3D.rotation.order = "YXZ";
                 if (isTracking) setStatus("Ketuk bagian model untuk melihat penjelasan");
+
+                // DEBUG: log semua mesh names di GLB
+                const meshNames = [];
+                modelEl.object3D.traverse((child) => {
+                    if (child.isMesh && child.name) meshNames.push(child.name);
+                });
+                console.log("[Model] Mesh names in GLB:", meshNames);
+                console.log("[Model] Steps in DB:", Object.keys(stepsData));
+
+                // DEBUG overlay: tampilkan semua mesh names di layar (5 detik)
+                var debugDiv = document.createElement("div");
+                debugDiv.style.cssText = "position:fixed;bottom:60px;left:10px;right:10px;background:rgba(0,0,0,0.85);color:#0f0;font-size:11px;padding:10px;border-radius:8px;z-index:9999;font-family:monospace;max-height:200px;overflow-y:auto;";
+                var html = "<b>GLB meshes (" + meshNames.length + "):</b><br>" + meshNames.join(", ") + "<br><br>";
+                html += "<b>DB steps (" + Object.keys(stepsData).length + "):</b><br>" + Object.keys(stepsData).join(", ");
+                debugDiv.innerHTML = html;
+                document.body.appendChild(debugDiv);
+                setTimeout(() => debugDiv.remove(), 10000);
             });
 
             modelEl.addEventListener("model-error", () => {
