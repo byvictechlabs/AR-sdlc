@@ -225,9 +225,18 @@
     <!-- CONTAINER AR -->
     <div id="app">
 
+        <!--
+            FIX #1 (penyebab utama "ngelag"): filterBeta sebelumnya di-set 0.001, jauh di bawah
+            nilai wajar MindAR (biasanya ratusan-ribuan). Beta sekecil itu bikin filter
+            terlalu "berat" ngikutin gerakan kamera → posisi/orientasi model nyusul telat,
+            keliatan kaya lag padahal itu settingan filter, bukan cuma performa HP.
+            Sekarang dinaikkan ke 300 (masih ada smoothing biar ga jitter, tapi jauh lebih responsif).
+            Kalau di device kamu masih berasa "kaku ngikutin", naikkan lagi ke 500-1000.
+            Kalau malah jadi jitter/gemeteran pas diem, turunkan dikit ke 100-200.
+        -->
         <a-scene
             id="ar-scene"
-            mindar-image="imageTargetSrc: /markers/targets.mind; uiLoading:no; uiError:no; uiScanning:no; autoStart:false; filterMinCF:0.0001; filterBeta:0.001;"
+            mindar-image="imageTargetSrc: /markers/targets.mind; uiLoading:no; uiError:no; uiScanning:no; autoStart:false; filterMinCF:0.0001; filterBeta:300;"
             color-space="sRGB"
             renderer="colorManagement: true, physicallyCorrectLights"
             vr-mode-ui="enabled: false"
@@ -342,14 +351,6 @@
                 console.log("[DB] Model path:", methodCfg.modelPath);
                 console.log("[DB] Target index:", methodCfg.targetIndex);
 
-                // On-screen debug: tampilkan info DB di layar (7 detik)
-                var dbInfo = document.createElement("div");
-                dbInfo.style.cssText = "position:fixed;top:10px;left:10px;right:10px;background:rgba(0,0,0,0.85);color:#0f0;font-size:11px;padding:10px;border-radius:8px;z-index:9999;font-family:monospace;";
-                var srcLabel = data.modelPath ? "DATABASE" : "FALLBACK";
-                dbInfo.innerHTML = "<b>DB Info:</b><br>Method: " + methodCfg.name + "<br>Source: " + srcLabel + "<br>Model: " + methodCfg.modelPath + "<br>Target: " + methodCfg.targetIndex;
-                document.body.appendChild(dbInfo);
-                setTimeout(() => dbInfo.remove(), 7000);
-
                 // Update UI
                 document.getElementById("target-entity").setAttribute("mindar-image-target", "targetIndex: " + methodCfg.targetIndex);
                 document.title = "AR SDLC - " + methodCfg.name;
@@ -365,6 +366,9 @@
 
                 dataLoaded = true;
                 console.log("Data loaded from DB:", methodCfg.name, "steps:", Object.keys(stepsData).length);
+
+                // Pre-load model DISABLED — sudah di-cache dari card click di mulai-belajar
+                // preloadModel(methodCfg.modelPath);
             } catch (e) {
                 clearTimeout(timer);
                 console.warn("DB load failed (" + e.message + "), using fallback config");
@@ -373,6 +377,163 @@
                 document.getElementById("target-entity").setAttribute("mindar-image-target", "targetIndex: " + methodCfg.targetIndex);
                 document.title = "AR SDLC - " + methodCfg.name;
                 document.getElementById("method-title").textContent = "Metode " + methodCfg.name;
+            }
+        }
+
+        // ================= PRE-LOAD MODEL (cache di awal, bukan saat scan) =================
+        let modelPreloaded = false;
+
+        async function preloadModel(url) {
+            if (modelPreloaded) return;
+            modelPreloaded = true;
+
+            console.log("[Preload] Starting model pre-cache from:", url);
+            setStatus("Mengunduh model 3D...");
+
+            const overlay = document.getElementById("model-loading-overlay");
+            const fill = document.getElementById("progress-fill");
+            const text = document.getElementById("progress-text");
+
+            overlay.classList.remove("hidden", "fade-out");
+            fill.style.width = "0%";
+            text.textContent = "Mengunduh...";
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error("HTTP " + response.status);
+
+                const contentLength = +(response.headers.get("Content-Length") || 0);
+                const reader = response.body.getReader();
+                var received = 0;
+                var chunks = [];
+
+                function pump() {
+                    return reader.read().then(function(result) {
+                        if (result.done) {
+                            var blob = new Blob(chunks, { type: "model/gltf-binary" });
+                            console.log("[Preload] Download complete. Size:", (received / 1048576).toFixed(1) + " MB");
+                            fill.style.width = "100%";
+                            text.textContent = "Siap untuk di-scan!";
+                            setStatus("Model siap. Arahkan kamera ke marker AR");
+                            
+                            // Cache model ke SW
+                            if ('caches' in window) {
+                                caches.open("ar-models-v1").then(function(cache) {
+                                    var blobUrl = URL.createObjectURL(blob);
+                                    return fetch(blobUrl).then(function(blobRes) {
+                                        cache.put(url, blobRes.clone());
+                                        URL.revokeObjectURL(blobUrl);
+                                        console.log("[Cache] Model cached ke SW");
+                                    });
+                                });
+                            }
+
+                            // Fade out overlay setelah 2 detik
+                            setTimeout(() => {
+                                overlay.classList.add("fade-out");
+                                setTimeout(() => overlay.classList.add("hidden"), 400);
+                            }, 2000);
+                            return;
+                        }
+
+                        chunks.push(result.value);
+                        received += result.value.length;
+
+                        if (contentLength > 0) {
+                            var pct = Math.round((received / contentLength) * 100);
+                            fill.style.width = pct + "%";
+                            text.textContent = "Mengunduh... " + pct + "% (" +
+                                (received / 1048576).toFixed(1) + " / " +
+                                (contentLength / 1048576).toFixed(1) + " MB)";
+                        } else {
+                            text.textContent = "Mengunduh... " +
+                                (received / 1048576).toFixed(1) + " MB";
+                        }
+                        return pump();
+                    });
+                }
+                return pump();
+            } catch (e) {
+                console.error("[Preload] Failed:", e.message);
+                setStatus("Model gagal di-download. Cek koneksi internet.");
+                overlay.classList.add("hidden");
+            }
+        }
+
+        // ================= LOAD MODEL FROM CACHE (instant, no download) =================
+        function loadModelFromCache(url) {
+            if (modelLoaded) {
+                console.log("[LoadCache] Model already loaded, skipping");
+                return;
+            }
+
+            console.log("[LoadCache] ========== LOADING FROM CACHE ==========");
+            console.log("[LoadCache] URL:", url);
+            setStatus("Memuat model dari cache...");
+
+            const overlay = document.getElementById("model-loading-overlay");
+            overlay.classList.remove("hidden", "fade-out");
+
+            if ('caches' in window) {
+                console.log("[LoadCache] Opening cache store 'ar-models-v1'...");
+                caches.open("ar-models-v1").then(function(cache) {
+                    console.log("[LoadCache] Cache opened. Listing all cached URLs...");
+                    return cache.keys().then(function(requests) {
+                        console.log("[LoadCache] Cached URLs:", requests.map(r => r.url));
+                        console.log("[LoadCache] Matching URL:", url);
+                        return cache.match(url);
+                    }).then(function(response) {
+                        if (response) {
+                            console.log("[LoadCache] ✓✓✓ CACHE HIT! Loading instantly");
+                            return response.blob();
+                        } else {
+                            console.warn("[LoadCache] ✗✗✗ CACHE MISS. Fallback to fetch");
+                            console.warn("[LoadCache] Requested URL:", url);
+                            return fetch(url).then(function(res) {
+                                if (!res.ok) throw new Error("HTTP " + res.status);
+                                console.log("[LoadCache] Fetch successful, converting to blob");
+                                return res.blob();
+                            });
+                        }
+                    });
+                }).then(function(blob) {
+                    console.log("[LoadCache] Blob ready. Size:", (blob.size / 1048576).toFixed(1), "MB");
+                    var blobURL = URL.createObjectURL(blob);
+                    var modelEl = document.getElementById("model-entity");
+                    console.log("[LoadCache] Setting gltf-model attribute on entity");
+                    modelEl.setAttribute("gltf-model", blobURL);
+                    modelLoaded = true;
+                    console.log("[LoadCache] ✓✓✓ MODEL LOADED SUCCESSFULLY");
+                    setStatus("Ketuk bagian model untuk melihat penjelasan");
+                    
+                    setTimeout(() => {
+                        overlay.classList.add("fade-out");
+                        setTimeout(() => overlay.classList.add("hidden"), 400);
+                    }, 800);
+                }).catch(function(e) {
+                    console.error("[LoadCache] ✗✗✗ FAILED:", e.message, e);
+                    setStatus("Gagal load model: " + e.message);
+                    overlay.classList.add("hidden");
+                });
+            } else {
+                console.warn("[LoadCache] Cache API not available, fallback to direct fetch");
+                fetch(url)
+                    .then(function(res) {
+                        if (!res.ok) throw new Error("HTTP " + res.status);
+                        return res.blob();
+                    })
+                    .then(function(blob) {
+                        var blobURL = URL.createObjectURL(blob);
+                        var modelEl = document.getElementById("model-entity");
+                        modelEl.setAttribute("gltf-model", blobURL);
+                        modelLoaded = true;
+                        setStatus("Ketuk bagian model untuk melihat penjelasan");
+                        
+                        setTimeout(() => {
+                            overlay.classList.add("fade-out");
+                            setTimeout(() => overlay.classList.add("hidden"), 400);
+                        }, 800);
+                    });
             }
         }
 
@@ -446,15 +607,6 @@
         // ================= MODEL DOWNLOAD WITH PROGRESS =================
         function loadModelWithProgress(url) {
             console.log("[Model] Loading from URL:", url);
-            console.log("[Model] Source:", url.startsWith("http") ? "REMOTE (R2/CDN)" : "LOCAL (project)");
-
-            // On-screen debug: tampilkan info model di layar (7 detik)
-            var modelInfo = document.createElement("div");
-            modelInfo.style.cssText = "position:fixed;top:50px;left:10px;right:10px;background:rgba(0,0,0,0.85);color:#0ff;font-size:11px;padding:10px;border-radius:8px;z-index:9999;font-family:monospace;";
-            var sourceLabel = url.startsWith("http") ? "REMOTE (R2/CDN)" : "LOCAL (project)";
-            modelInfo.innerHTML = "<b>Model Info:</b><br>Source: " + sourceLabel + "<br>URL: " + url;
-            document.body.appendChild(modelInfo);
-            setTimeout(() => modelInfo.remove(), 7000);
 
             const overlay = document.getElementById("model-loading-overlay");
             const fill = document.getElementById("progress-fill");
@@ -609,9 +761,6 @@
             for (const camera of getCameras()) {
                 const name = findStageNameAt(clientX, clientY, camera);
                 if (!name) continue;
-                // DEBUG: tampilkan nama mesh yang terdeteksi di layar
-                showMeshFeedback("Mesh: " + name, "nomesh");
-                console.log("[Click] Detected mesh:", name, "| stepsData keys:", Object.keys(stepsData));
                 if (stepsData[name]) {
                     showMeshFeedback("✓ " + stepsData[name].title, "success");
                     openPopup(stepsData[name]);
@@ -628,6 +777,16 @@
         // Pointer events dipakai jika tersedia; jika tidak, fallback ke touch & mouse.
         // Seleksi tahap dilakukan lewat event "click" (bukan touchend/pointerup)
         // agar popup tidak langsung tertutup oleh click palsu dari browser.
+        //
+        // FIX #2 & #3: sebelumnya rotate/pinch langsung mengubah object3D di setiap
+        // event pointermove, dan rotasi X (atas/bawah) juga aktif. Sekarang:
+        //  - Rotasi HANYA sumbu Y (kiri/kanan). Sumbu X & Z dikunci ke 0.
+        //  - Input gesture cuma menulis ke TARGET (rotTarget / scaleTarget), lalu
+        //    ada satu render-loop (animateModel, lihat di bawah) yang men-"smooth"
+        //    nilai current -> target pakai lerp tiap frame, dipisah dari rate
+        //    event pointer/touch yang suka gak stabil di HP. Ini yang bikin gerakan
+        //    putar & zoom kerasa jauh lebih halus.
+        //  - Ditambah sedikit inertia pas jari dilepas abis rotate, biar berasa natural.
         const gesture = {
             pointers: new Map(),
             startX: 0, startY: 0,
@@ -638,6 +797,18 @@
             pinchBaseScale: 1,
         };
         let pendingTap = false;
+
+        // State untuk smoothing rotate (Y only) & scale
+        const ROTATE_SENSITIVITY = 0.012;   // makin kecil = putar makin "berat"/presisi
+        const ROTATE_LERP = 0.18;           // makin besar = makin cepat ngejar target (kurang smoothing)
+        const SCALE_LERP = 0.22;
+        const INERTIA_DECAY = 0.93;         // makin dekat 1 = inertia makin lama jalan
+        const INERTIA_MIN_VELOCITY = 0.0004;
+        const SCALE_MIN = 0.08;
+        const SCALE_MAX = 3;
+
+        const rot = { current: 0, target: 0, velocity: 0 };
+        const scaleState = { current: null, target: null }; // diisi begitu model_loaded (pakai scale awal entity)
 
         function pointDist(a, b) {
             return Math.hypot(a.x - b.x, a.y - b.y);
@@ -656,11 +827,12 @@
                 gesture.startY = gesture.lastY = y;
                 gesture.dragging = false;
                 gesture.pinching = false;
+                rot.velocity = 0; // stop inertia begitu disentuh lagi
             } else if (pts.size === 2) {
                 gesture.pinching = true;
                 const arr = getGesturePoints();
                 gesture.pinchStartDist = pointDist(arr[0], arr[1]);
-                gesture.pinchBaseScale = modelEntityScale();
+                gesture.pinchBaseScale = scaleState.target ?? modelEntityScale();
             }
         }
 
@@ -670,22 +842,24 @@
             pts.set(id, { x, y });
             if (pts.size === 1) {
                 const dx = x - gesture.lastX;
-                const dy = y - gesture.lastY;
+                const dy = y - gesture.lastY; // sengaja tidak dipakai untuk rotasi (lihat catatan di atas)
                 if (Math.abs(x - gesture.startX) > 8 ||
                     Math.abs(y - gesture.startY) > 8) {
                     gesture.dragging = true;
                 }
-                if (gesture.dragging && modelLoaded) rotateModel(dx, dy);
+                if (gesture.dragging && modelLoaded) {
+                    // Hanya update TARGET rotasi Y. Nilai aktualnya di-smooth di animateModel().
+                    const delta = dx * ROTATE_SENSITIVITY;
+                    rot.target += delta;
+                    rot.velocity = delta; // dipakai buat inertia pas jari dilepas
+                }
                 gesture.lastX = x;
                 gesture.lastY = y;
             } else if (pts.size === 2 && gesture.pinchStartDist) {
                 const arr = getGesturePoints();
                 const d = pointDist(arr[0], arr[1]);
-                const model = document.getElementById("model-entity");
-                if (model && model.object3D) {
-                    const s = clamp(gesture.pinchBaseScale * (d / gesture.pinchStartDist), 0.08, 3);
-                    model.object3D.scale.set(s, s, s);
-                }
+                const nextScale = clamp(gesture.pinchBaseScale * (d / gesture.pinchStartDist), SCALE_MIN, SCALE_MAX);
+                if (scaleState.target !== null) scaleState.target = nextScale;
             }
         }
 
@@ -715,17 +889,6 @@
             gesture.pinchStartDist = 0;
         }
 
-        function rotateModel(dx, dy) {
-            if (!modelLoaded) return;
-            const model = document.getElementById("model-entity");
-            if (!model || !model.object3D) return;
-            model.object3D.rotation.y += dx * 0.025;
-            model.object3D.rotation.x = clamp(
-                model.object3D.rotation.x + dy * 0.025,
-                -1.6, 1.6
-            );
-        }
-
         function modelEntityScale() {
             const model = document.getElementById("model-entity");
             return model && model.object3D ? model.object3D.scale.x : 1;
@@ -734,6 +897,35 @@
         function clamp(v, min, max) {
             return Math.min(Math.max(v, min), max);
         }
+
+        // ================= RENDER-LOOP SMOOTHING (rotate Y only + zoom) =================
+        // Loop ini jalan terus tiap frame lewat requestAnimationFrame, independen dari
+        // seberapa sering event pointermove ditembak HP. Ini kunci utama biar putar &
+        // zoom kerasa smooth walau device-nya kurang kencang.
+        function animateModel() {
+            const model = document.getElementById("model-entity");
+            if (model && model.object3D) {
+                // --- Inertia: kalau lagi ga di-drag dan masih ada sisa "kecepatan", terus geser target ---
+                if (!gesture.dragging && Math.abs(rot.velocity) > INERTIA_MIN_VELOCITY) {
+                    rot.target += rot.velocity;
+                    rot.velocity *= INERTIA_DECAY;
+                } else if (!gesture.dragging) {
+                    rot.velocity = 0;
+                }
+
+                // --- Smooth rotasi Y menuju target ---
+                rot.current += (rot.target - rot.current) * ROTATE_LERP;
+                model.object3D.rotation.set(0, rot.current, 0); // X & Z dikunci 0 = tidak bisa diputar atas/bawah
+
+                // --- Smooth scale (zoom) menuju target ---
+                if (scaleState.current !== null && scaleState.target !== null) {
+                    scaleState.current += (scaleState.target - scaleState.current) * SCALE_LERP;
+                    model.object3D.scale.setScalar(scaleState.current);
+                }
+            }
+            requestAnimationFrame(animateModel);
+        }
+        requestAnimationFrame(animateModel);
 
         function setupGestures() {
             const sceneEl = document.getElementById("ar-scene");
@@ -864,9 +1056,15 @@
 
         // ================= INIT =================
         async function init() {
+            console.log("[INIT] ========== AR PAGE INIT ==========");
+            console.log("[INIT] URL:", window.location.href);
+            console.log("[INIT] Method slug:", cleanSlug);
+            
             const sceneEl = document.getElementById("ar-scene");
             const targetEl = document.getElementById("target-entity");
             const modelEl = document.getElementById("model-entity");
+
+            console.log("[INIT] Attaching event listeners...");
 
             // Attach event listeners DULU — jangan await loadFromDB dulu!
             // Kalau await loadFromDB() duluan, scene "loaded" event fires sebelum
@@ -882,12 +1080,15 @@
             });
 
             targetEl.addEventListener("targetFound", () => {
+                console.log("[AR] ========== TARGET FOUND ==========");
+                console.log("[AR] isTracking:", isTracking, "| modelLoaded:", modelLoaded, "| modelPath:", methodCfg.modelPath);
                 isTracking = true;
                 hideError();
-                if (!modelLoaded && !modelLoading) {
-                    modelLoading = true;
-                    loadModelWithProgress(methodCfg.modelPath);
-                } else if (modelLoaded) {
+                if (!modelLoaded) {
+                    console.log("[AR] Model not loaded yet. Calling loadModelFromCache()...");
+                    loadModelFromCache(methodCfg.modelPath);
+                } else {
+                    console.log("[AR] Model already loaded. Ready for interaction.");
                     setStatus("Ketuk bagian model untuk melihat penjelasan");
                 }
             });
@@ -903,25 +1104,17 @@
                 const overlay = document.getElementById("model-loading-overlay");
                 overlay.classList.add("fade-out");
                 setTimeout(() => overlay.classList.add("hidden"), 400);
-                if (modelEl.object3D) modelEl.object3D.rotation.order = "YXZ";
+
+                if (modelEl.object3D) {
+                    modelEl.object3D.rotation.order = "YXZ";
+                    // Inisialisasi state smoothing dari nilai awal entity,
+                    // biar ga "loncat" begitu animateModel mulai jalan.
+                    rot.current = rot.target = modelEl.object3D.rotation.y;
+                    const initialScale = modelEl.object3D.scale.x || 1;
+                    scaleState.current = scaleState.target = initialScale;
+                }
+
                 if (isTracking) setStatus("Ketuk bagian model untuk melihat penjelasan");
-
-                // DEBUG: log semua mesh names di GLB
-                const meshNames = [];
-                modelEl.object3D.traverse((child) => {
-                    if (child.isMesh && child.name) meshNames.push(child.name);
-                });
-                console.log("[Model] Mesh names in GLB:", meshNames);
-                console.log("[Model] Steps in DB:", Object.keys(stepsData));
-
-                // DEBUG overlay: tampilkan semua mesh names di layar (5 detik)
-                var debugDiv = document.createElement("div");
-                debugDiv.style.cssText = "position:fixed;bottom:60px;left:10px;right:10px;background:rgba(0,0,0,0.85);color:#0f0;font-size:11px;padding:10px;border-radius:8px;z-index:9999;font-family:monospace;max-height:200px;overflow-y:auto;";
-                var html = "<b>GLB meshes (" + meshNames.length + "):</b><br>" + meshNames.join(", ") + "<br><br>";
-                html += "<b>DB steps (" + Object.keys(stepsData).length + "):</b><br>" + Object.keys(stepsData).join(", ");
-                debugDiv.innerHTML = html;
-                document.body.appendChild(debugDiv);
-                setTimeout(() => debugDiv.remove(), 10000);
             });
 
             modelEl.addEventListener("model-error", () => {
@@ -938,17 +1131,29 @@
             });
 
             // Load data dari DB di belakang — TANPA nge-block event listeners
+            console.log("[INIT] Starting loadFromDB() in background...");
             loadFromDB();
         }
 
         // ================= SERVICE WORKER (cache model) =================
+        console.log("[INIT] Registering service worker...");
         if ("serviceWorker" in navigator) {
-            navigator.serviceWorker.register("/sw.js").catch(function() {});
+            navigator.serviceWorker.register("/sw.js")
+                .then(function(reg) {
+                    console.log("[SW] Registered successfully:", reg.scope);
+                })
+                .catch(function(err) {
+                    console.error("[SW] Registration failed:", err);
+                });
+        } else {
+            console.warn("[SW] Service Worker not supported");
         }
 
         if (window.speechSynthesis) {
             window.speechSynthesis.onvoiceschanged = () => {};
         }
+        
+        console.log("[INIT] Calling init()...");
         init();
     </script>
 </body>

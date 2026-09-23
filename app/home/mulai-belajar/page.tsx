@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { sdlcMethods } from "@/db/schema";
 import { asc, eq } from "drizzle-orm";
 import ModelPreloader from "@/components/ModelPreloader";
+import { MethodCard } from "./MethodCard";
 import {
   ArrowLeft,
   RefreshCw,
@@ -81,33 +82,30 @@ export default async function MulaiBelajarPage() {
         ) : (
           <div className="grid grid-cols-2 gap-3">
             {methods.map((method, index) => {
-              const Icon = getMethodIcon(method.name);
+              const lowerName = method.name.toLowerCase();
+              let iconName = "agile";
+              if (lowerName.includes("waterfall")) iconName = "waterfall";
+              else if (lowerName.includes("agile")) iconName = "agile";
+              else if (lowerName.includes("scrum")) iconName = "scrum";
+              else if (lowerName.includes("big-bang") || lowerName.includes("big bang")) iconName = "big-bang";
+              else if (lowerName.includes("prototype")) iconName = "prototype";
+              else if (lowerName.includes("spiral")) iconName = "spiral";
+              else if (lowerName.includes("iterative")) iconName = "iterative";
+              else if (lowerName.includes("incremental")) iconName = "incremental";
+              else if (lowerName.includes("lean")) iconName = "lean";
+              else if (lowerName.includes("devops")) iconName = "devops";
+
               return (
-                <a
+                <MethodCard
                   key={method.id}
-                  href={`/learn/ar.html?method=${method.slug}`}
-                  className="group flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-all duration-200 hover:border-blue-300 hover:shadow-md active:scale-95"
-                >
-                  <div className="h-1.5 w-full bg-gradient-to-r from-blue-600 to-blue-400" />
-                  <div className="flex flex-1 flex-col items-center px-3 pt-4 pb-3 text-center">
-                    <div className="relative">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-blue-400 text-white shadow-md shadow-blue-500/30 transition-transform duration-200 group-hover:scale-105">
-                        <Icon className="h-6 w-6" strokeWidth={1.5} />
-                      </div>
-                      <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white ring-2 ring-white">
-                        {String(index + 1).padStart(2, "0")}
-                      </span>
-                    </div>
-                    <h3 className="mt-2 text-sm font-bold text-gray-800 leading-tight">
-                      {method.name}
-                    </h3>
-                    {method.description ? (
-                      <p className="mt-1 text-[10px] font-medium leading-relaxed text-gray-500 line-clamp-2">
-                        {method.description}
-                      </p>
-                    ) : null}
-                  </div>
-                </a>
+                  id={method.id}
+                  slug={method.slug}
+                  name={method.name}
+                  description={method.description}
+                  modelPath={method.modelPath}
+                  index={index}
+                  iconName={iconName}
+                />
               );
             })}
           </div>
