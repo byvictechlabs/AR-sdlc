@@ -466,6 +466,11 @@
                 console.log("[LoadCache] Model already loaded, skipping");
                 return;
             }
+            if (modelLoading) {
+                console.log("[LoadCache] Model already loading, skipping");
+                return;
+            }
+            modelLoading = true;
 
             console.log("[LoadCache] ========== LOADING FROM CACHE ==========");
             console.log("[LoadCache] URL:", url);
@@ -501,15 +506,12 @@
                     var blobURL = URL.createObjectURL(blob);
                     var modelEl = document.getElementById("model-entity");
                     console.log("[LoadCache] Setting gltf-model attribute on entity");
+                    setStatus("Memuat model 3D ke kamera...");
                     modelEl.setAttribute("gltf-model", blobURL);
-                    modelLoaded = true;
-                    console.log("[LoadCache] ✓✓✓ MODEL LOADED SUCCESSFULLY");
-                    setStatus("Ketuk bagian model untuk melihat penjelasan");
-                    
-                    setTimeout(() => {
-                        overlay.classList.add("fade-out");
-                        setTimeout(() => overlay.classList.add("hidden"), 400);
-                    }, 800);
+                    // JANGAN sembunyiin overlay di sini.
+                    // Biarkan event "model-loaded" (listener di init()) yang menutupnya —
+                    // GLB butuh waktu parse (Draco decompress) setelah setAttribute.
+                    console.log("[LoadCache] gltf-model set. Waiting for model-loaded event...");
                 }).catch(function(e) {
                     console.error("[LoadCache] ✗✗✗ FAILED:", e.message, e);
                     setStatus("Gagal load model: " + e.message);
@@ -525,14 +527,9 @@
                     .then(function(blob) {
                         var blobURL = URL.createObjectURL(blob);
                         var modelEl = document.getElementById("model-entity");
+                        setStatus("Memuat model 3D ke kamera...");
                         modelEl.setAttribute("gltf-model", blobURL);
-                        modelLoaded = true;
-                        setStatus("Ketuk bagian model untuk melihat penjelasan");
-                        
-                        setTimeout(() => {
-                            overlay.classList.add("fade-out");
-                            setTimeout(() => overlay.classList.add("hidden"), 400);
-                        }, 800);
+                        // Overlay ditutup oleh event "model-loaded"
                     });
             }
         }
@@ -680,13 +677,44 @@
 
         // Ambil nama tahap dari objek mesh; nama bisa ada di mesh itu sendiri
         // atau di parent-nya (Group). Sesuai mesh name yang dipakai admin.
+        // Prioritas: nama yang COCOK dengan stepsData (DB) duluan.
+        // Ini nge-handle kasus klik di text/child mesh (misal "Text002")
+        // yang parent-nya adalah "AG_DESIGN".
         function resolveMeshName(obj) {
             let cur = obj;
+            let firstName = null;
             while (cur) {
-                if (cur.name && cur.name.trim()) return cur.name.trim();
+                const n = cur.name && cur.name.trim();
+                if (n) {
+                    if (stepsData[n]) return n;   // cocok DB → pakai ini
+                    if (!firstName) firstName = n; // cadangan: nama pertama
+                }
                 cur = cur.parent;
             }
-            return null;
+            return firstName;
+        }
+
+        // Highlight (kedip hijau) semua mesh milik tahap yang diklik,
+        // biar user tau bagian mana yang ke-deteksi.
+        function highlightStage(stageName) {
+            const modelEl = document.getElementById("model-entity");
+            if (!modelEl || !modelEl.object3D) return;
+            const toRestore = [];
+            modelEl.object3D.traverse((child) => {
+                if (!child.isMesh || !child.material) return;
+                if (resolveMeshName(child) !== stageName) return;
+                const mats = Array.isArray(child.material) ? child.material : [child.material];
+                mats.forEach((m) => {
+                    if (!m.emissive) return;
+                    toRestore.push({ m, color: m.emissive.getHex() });
+                    m.emissive.setHex(0x00ff66);
+                });
+            });
+            if (toRestore.length === 0) return;
+            console.log("[Highlight] Mesh \"" + stageName + "\" di-highlight (" + toRestore.length + " material)");
+            setTimeout(() => {
+                toRestore.forEach(({ m, color }) => m.emissive.setHex(color));
+            }, 700);
         }
 
         // Cari nama mesh tahap yang menutupi titik klik.
@@ -761,13 +789,15 @@
             for (const camera of getCameras()) {
                 const name = findStageNameAt(clientX, clientY, camera);
                 if (!name) continue;
+                console.log("[Click] Detected mesh:", name, "| in DB:", !!stepsData[name]);
                 if (stepsData[name]) {
-                    showMeshFeedback("✓ " + stepsData[name].title, "success");
+                    highlightStage(name);
+                    showMeshFeedback("✓ " + stepsData[name].title + "  (" + name + ")", "success");
                     openPopup(stepsData[name]);
                     return;
                 }
-                // Mesh ketemu tapi ga ada di data admin
-                console.warn("Mesh ditemukan tapi tidak ada di data admin:", name);
+                // Mesh ketemu tapi ga ada di data admin → tampilin nama mesh-nya
+                showMeshFeedback("⚠ Mesh \"" + name + "\" belum ada di data admin", "notfound");
                 return;
             }
             showMeshFeedback("Tidak ada bagian model yang terdeteksi", "nomesh");

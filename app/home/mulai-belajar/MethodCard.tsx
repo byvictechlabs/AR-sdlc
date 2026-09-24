@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   RefreshCw,
   Settings,
@@ -51,9 +51,42 @@ export function MethodCard({
 
   const Icon = (iconMap[iconName as keyof typeof iconMap] || RefreshCw);
 
+  // Reset state saat halaman di-restore lewat back button (bfcache).
+  // Tanpa ini, popup download "nempel" waktu user back dari ar.html.
+  useEffect(() => {
+    const onPageShow = () => {
+      setIsPreloading(false);
+      setProgress(0);
+      setStatus("");
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, []);
+
+  // Cek apakah model sudah ada di Cache API → skip download, langsung navigate
+  async function isModelCached(url: string): Promise<boolean> {
+    if (!("caches" in window)) return false;
+    try {
+      const cache = await caches.open("ar-models-v1");
+      const hit = await cache.match(url);
+      return !!hit;
+    } catch {
+      return false;
+    }
+  }
+
   const handleClick = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     console.log("[MethodCard] Click:", slug, "| Model:", modelPath);
+
+    // Kalau model sudah di-cache → langsung buka AR, tanpa download ulang
+    const cached = await isModelCached(modelPath);
+    if (cached) {
+      console.log("[MethodCard] ✓ Model already cached! Navigating instantly...");
+      window.location.href = `/learn/ar.html?method=${slug}`;
+      return;
+    }
+
     setIsPreloading(true);
     setProgress(0);
     setStatus("Mengunduh model...");
