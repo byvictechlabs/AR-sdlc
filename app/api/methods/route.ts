@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { methodSchema } from "@/schemas";
 import { asc } from "drizzle-orm";
 import { handleApiError } from "@/lib/api-error";
+import { revalidateTag } from "next/cache";
 
 export async function GET() {
   try {
@@ -27,6 +28,9 @@ export async function POST(request: NextRequest) {
       .insert(sdlcMethods)
       .values(data)
       .returning();
+
+    // Invalidate cache halaman /home/mulai-belajar
+    revalidateTag("methods", { expire: 0 });
 
     return NextResponse.json(method, { status: 201 });
   } catch (error) {

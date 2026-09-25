@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { methodSchema } from "@/schemas";
 import { eq } from "drizzle-orm";
 import { handleApiError } from "@/lib/api-error";
+import { revalidateTag } from "next/cache";
 
 export async function GET(
   _request: NextRequest,
@@ -52,6 +53,9 @@ export async function PUT(
       );
     }
 
+    // Invalidate cache halaman /home/mulai-belajar
+    revalidateTag("methods", { expire: 0 });
+
     return NextResponse.json(updated);
   } catch (error) {
     return handleApiError(error, "update method");
@@ -75,6 +79,9 @@ export async function DELETE(
         { status: 404 }
       );
     }
+
+    // Invalidate cache halaman /home/mulai-belajar
+    revalidateTag("methods", { expire: 0 });
 
     return NextResponse.json({ success: true });
   } catch (error) {
