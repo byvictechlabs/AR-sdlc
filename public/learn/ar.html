@@ -330,6 +330,34 @@
         // ================= LOAD DATA FROM DATABASE (dynamic-first) =================
         const API_TIMEOUT = 5000;
 
+        // FIX: komponen "mindar-image-target" MindAR cuma baca targetIndex SEKALI
+        // di init() (registerAnchor) — setAttribute setelah itu TIDAK ngaruh ke
+        // anchor yang sudah terdaftar. Akibatnya semua metode tetap dengerin index 1.
+        // Solusi: set attribute + patch langsung anchorEntities milik system.
+        function applyTargetIndex(idx) {
+            const sceneEl = document.getElementById("ar-scene");
+            const targetEl = document.getElementById("target-entity");
+            targetEl.setAttribute("mindar-image-target", "targetIndex: " + idx);
+
+            const system = sceneEl.systems && sceneEl.systems["mindar-image-system"];
+            if (!system || !system.anchorEntities) {
+                console.log("[AR] targetIndex via attribute (system belum init):", idx);
+                return;
+            }
+
+            system.anchorEntities.forEach((anchor) => {
+                if (anchor.el === targetEl.components["mindar-image-target"]) {
+                    anchor.targetIndex = idx;
+                    // Setup ulang dimensi marker biar postMatrix sesuai target baru
+                    const dims = system.controller && system.controller.markerDimensions;
+                    if (dims && dims[idx] && typeof anchor.setupMarker === "function") {
+                        anchor.setupMarker(dims[idx]);
+                    }
+                }
+            });
+            console.log("[AR] targetIndex di-patch ke anchor:", idx);
+        }
+
         async function loadFromDB() {
             const controller = new AbortController();
             const timer = setTimeout(() => controller.abort(), API_TIMEOUT);
@@ -352,7 +380,7 @@
                 console.log("[DB] Target index:", methodCfg.targetIndex);
 
                 // Update UI
-                document.getElementById("target-entity").setAttribute("mindar-image-target", "targetIndex: " + methodCfg.targetIndex);
+                applyTargetIndex(methodCfg.targetIndex);
                 document.title = "AR SDLC - " + methodCfg.name;
                 document.getElementById("method-title").textContent = "Metode " + methodCfg.name;
 
@@ -374,7 +402,7 @@
                 console.warn("DB load failed (" + e.message + "), using fallback config");
                 console.log("[Fallback] Using hardcoded model:", methodCfg.modelPath);
                 // Apply fallback config
-                document.getElementById("target-entity").setAttribute("mindar-image-target", "targetIndex: " + methodCfg.targetIndex);
+                applyTargetIndex(methodCfg.targetIndex);
                 document.title = "AR SDLC - " + methodCfg.name;
                 document.getElementById("method-title").textContent = "Metode " + methodCfg.name;
             }

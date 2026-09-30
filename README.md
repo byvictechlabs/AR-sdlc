@@ -16,6 +16,7 @@ Aplikasi WebAR yang memungkinkan pengguna memindai marker AR untuk melihat model
 - [AR Engine Detail](#ar-engine-detail)
 - [Caching Strategy](#caching-strategy)
 - [Struktur Proyek](#struktur-proyek)
+- [Peta Lengkap File & Hubungan Antar-File](#peta-lengkap-file--hubungan-antar-file)
 - [Environment Variables](#environment-variables)
 - [Instalasi & Setup](#instalasi--setup)
 - [Deploy ke Vercel](#deploy-ke-vercel)
@@ -236,7 +237,7 @@ File GLB (3D Model)              Database (method_steps)
 
 ### File: `public/learn/ar.html`
 
-File ini adalah **single-file application** (~940 baris) yang berisi semua logic AR:
+File ini adalah **single-file application** (~1218 baris) yang berisi semua logic AR:
 
 #### Komponen Utama
 
@@ -427,6 +428,16 @@ sdlc-ar/
 │   ├── manifest.json             # PWA manifest
 │   └── sw.js                     # [generated] Service worker
 │
+├── docs/                        # Dokumentasi proyek
+│   ├── PRD.md                   # Kebutuhan produk
+│   ├── ARCHITECTURE.md          # Keputusan arsitektur
+│   ├── DATABASE.md              # Desain database & ERD
+│   ├── CODING_GUIDELINES.md     # Standar kode
+│   ├── AR_SYSTEM.md             # Detail sistem AR
+│   ├── CODEBASE_MAP.md          # ⭐ Peta per-file + alur + hubungan
+│   ├── ROADMAP.md               # Roadmap pengembangan
+│   └── UI_UX.md                 # Pedoman desain
+│
 ├── middleware.ts                 # NextAuth middleware (/admin protection)
 ├── next.config.ts                # Next.js + Serwist config
 ├── drizzle.config.ts             # Drizzle Kit config
@@ -439,10 +450,29 @@ sdlc-ar/
 
 | File | Penjelasan |
 |---|---|
-| `public/learn/ar.html` | **File paling penting.** Semua logic AR ada di sini. ~940 baris. Edit dengan hati-hati. |
+| `public/learn/ar.html` | **File paling penting.** Semua logic AR ada di sini. ~1218 baris. Edit dengan hati-hati. |
 | `app/sw.ts` | Service worker — caching model 3D. |
 | `app/api/methods/by-slug/[slug]/route.ts` | API yang dipanggil oleh `ar.html` untuk load data. |
 | `db/seed.ts` | Data awal (admin account + methods + steps). |
+
+---
+
+## Peta Lengkap File & Hubungan Antar-File
+
+Penjelasan **per-file** — fungsi tiap file, alur sistem, dan hubungan
+"siapa memanggil siapa" ada di:
+
+> 📄 **[`docs/CODEBASE_MAP.md`](docs/CODEBASE_MAP.md)**
+
+Isinya:
+
+1. **Cara baca** — urutan baca untuk developer baru
+2. **Peta dependensi antar-lapisan** — presentation → AR → API → database
+3. **Alur utama** — pengguna, data dinamis, caching (4 lapis), admin/auth, runtime AR
+4. **Struktur folder annotated** — tiap folder dengan fungsi
+5. **Referensi file per folder** — SEMUA file: fungsi, tipe, hubungan ke file lain
+6. **Tabel hubungan file ↔ file** — termasuk 2 "jembatan" kritis (`meshName` & `mindTargetIndex`)
+7. **Kode mati & catatan teknis** — file yang tidak dipakai + 10 catatan penting
 
 ---
 
