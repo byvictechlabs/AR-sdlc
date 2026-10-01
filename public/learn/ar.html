@@ -245,12 +245,13 @@
             <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
             <!-- targetIndex & model diisi otomatis dari ?method= (cek script).
-                 Model dimuat lazy setelah marker terdeteksi (setAttribute gltf-model). -->
+                 Model dimuat lazy setelah marker terdeteksi (setAttribute gltf-model).
+                 "pivot" = pembungkus untuk gesture (putar/zoom/geser).
+                 "model-entity" = khusus normalisasi ukuran & titik tengah otomatis. -->
             <a-entity id="target-entity" mindar-image-target="targetIndex: 1">
-                <a-entity
-                    id="model-entity"
-                    position="0 0 0"
-                    scale="0.35 0.35 0.35"></a-entity>
+                <a-entity id="pivot">
+                    <a-entity id="model-entity"></a-entity>
+                </a-entity>
             </a-entity>
         </a-scene>
 
@@ -269,6 +270,7 @@
     <div id="ui-top">
         <a class="btn-back" href="/home/mulai-belajar">⬅ Kembali</a>
         <div class="title-pill" id="method-title">Metode Agile</div>
+        <button class="btn-back" id="btn-reset" style="margin-left:auto" onclick="resetView()">⟲ Reset</button>
     </div>
     <div id="status-pill">Memuat AR...</div>
 
@@ -831,20 +833,40 @@
             showMeshFeedback("Tidak ada bagian model yang terdeteksi", "nomesh");
         }
 
-        // ================= GESTURE (tap, putar, zoom) =================
+        // ================= GESTURE (tap, putar, zoom, geser) =================
         // Pointer events dipakai jika tersedia; jika tidak, fallback ke touch & mouse.
         // Seleksi tahap dilakukan lewat event "click" (bukan touchend/pointerup)
         // agar popup tidak langsung tertutup oleh click palsu dari browser.
         //
-        // FIX #2 & #3: sebelumnya rotate/pinch langsung mengubah object3D di setiap
-        // event pointermove, dan rotasi X (atas/bawah) juga aktif. Sekarang:
-        //  - Rotasi HANYA sumbu Y (kiri/kanan). Sumbu X & Z dikunci ke 0.
-        //  - Input gesture cuma menulis ke TARGET (rotTarget / scaleTarget), lalu
-        //    ada satu render-loop (animateModel, lihat di bawah) yang men-"smooth"
-        //    nilai current -> target pakai lerp tiap frame, dipisah dari rate
-        //    event pointer/touch yang suka gak stabil di HP. Ini yang bikin gerakan
-        //    putar & zoom kerasa jauh lebih halus.
-        //  - Ditambah sedikit inertia pas jari dilepas abis rotate, biar berasa natural.
+        // Kontrol:
+        //  - 1 jari geser kiri/kanan  = putar (sumbu Y, bebas)
+        //  - 1 jari geser atas/bawah  = miring atas/bawah (sumbu X, DIBATASI min/max)
+        //  - 2 jari pinch             = zoom in/out
+        //  - 2 jari geser             = pindah posisi model
+        //  - tombol Reset             = kembali ke tampilan awal
+        // Semua input hanya menulis ke TARGET, lalu animateModel() men-smooth
+        // nilai current -> target tiap frame (lerp), terpisah dari rate event sentuhan.
+
+        // ---------- Konfigurasi (silakan di-tweak) ----------
+        const FIT_SIZE = 1.0;          // ukuran sisi terpanjang model = 1x lebar marker. Mau semua lebih besar/kecil? ubah ini.
+        const ROT_SENS = 0.010;        // sensitivitas putar
+        const ROT_X_MIN = -0.45;       // batas lihat dari bawah (radian, ~ -26°)
+        const ROT_X_MAX = 0.90;        // batas lihat dari atas  (radian, ~ +52°)
+        const ZOOM_MIN = 0.4;
+        const ZOOM_MAX = 3.5;
+        const PAN_SPEED = 0.003;       // seberapa jauh model bergeser per pixel (2 jari)
+        const PAN_LIMIT = 1.5;         // batas geser dari tengah marker
+        const LERP = 0.2;              // 0-1, makin besar makin responsif
+        const INERTIA_DECAY = 0.92;
+        const INERTIA_MIN = 0.0003;
+
+        const VIEW_DEFAULT = { ry: 0, rx: 0, px: 0, py: 0, z: 1 };
+        const view = {
+            c: Object.assign({}, VIEW_DEFAULT), // current (yang tampil)
+            t: Object.assign({}, VIEW_DEFAULT), // target (hasil gesture)
+            vx: 0, vy: 0                         // inertia putar
+        };
+
         const gesture = {
             pointers: new Map(),
             startX: 0, startY: 0,
@@ -852,21 +874,10 @@
             dragging: false,
             pinching: false,
             pinchStartDist: 0,
-            pinchBaseScale: 1,
+            pinchBaseZoom: 1,
+            lastMidX: 0, lastMidY: 0,
         };
         let pendingTap = false;
-
-        // State untuk smoothing rotate (Y only) & scale
-        const ROTATE_SENSITIVITY = 0.012;   // makin kecil = putar makin "berat"/presisi
-        const ROTATE_LERP = 0.18;           // makin besar = makin cepat ngejar target (kurang smoothing)
-        const SCALE_LERP = 0.22;
-        const INERTIA_DECAY = 0.93;         // makin dekat 1 = inertia makin lama jalan
-        const INERTIA_MIN_VELOCITY = 0.0004;
-        const SCALE_MIN = 0.08;
-        const SCALE_MAX = 3;
-
-        const rot = { current: 0, target: 0, velocity: 0 };
-        const scaleState = { current: null, target: null }; // diisi begitu model_loaded (pakai scale awal entity)
 
         function pointDist(a, b) {
             return Math.hypot(a.x - b.x, a.y - b.y);
@@ -885,12 +896,14 @@
                 gesture.startY = gesture.lastY = y;
                 gesture.dragging = false;
                 gesture.pinching = false;
-                rot.velocity = 0; // stop inertia begitu disentuh lagi
+                view.vx = view.vy = 0; // stop inertia begitu disentuh lagi
             } else if (pts.size === 2) {
                 gesture.pinching = true;
                 const arr = getGesturePoints();
                 gesture.pinchStartDist = pointDist(arr[0], arr[1]);
-                gesture.pinchBaseScale = scaleState.target ?? modelEntityScale();
+                gesture.pinchBaseZoom = view.t.z;
+                gesture.lastMidX = (arr[0].x + arr[1].x) / 2;
+                gesture.lastMidY = (arr[0].y + arr[1].y) / 2;
             }
         }
 
@@ -900,24 +913,33 @@
             pts.set(id, { x, y });
             if (pts.size === 1) {
                 const dx = x - gesture.lastX;
-                const dy = y - gesture.lastY; // sengaja tidak dipakai untuk rotasi (lihat catatan di atas)
+                const dy = y - gesture.lastY;
                 if (Math.abs(x - gesture.startX) > 8 ||
                     Math.abs(y - gesture.startY) > 8) {
                     gesture.dragging = true;
                 }
                 if (gesture.dragging && modelLoaded) {
-                    // Hanya update TARGET rotasi Y. Nilai aktualnya di-smooth di animateModel().
-                    const delta = dx * ROTATE_SENSITIVITY;
-                    rot.target += delta;
-                    rot.velocity = delta; // dipakai buat inertia pas jari dilepas
+                    // Hanya update TARGET. Nilai aktualnya di-smooth di animateModel().
+                    view.t.ry += dx * ROT_SENS;
+                    // Miring atas/bawah dibatasi min/max (tidak bisa salto)
+                    view.t.rx = clamp(view.t.rx + dy * ROT_SENS, ROT_X_MIN, ROT_X_MAX);
+                    view.vx = dx * ROT_SENS; // dipakai buat inertia pas jari dilepas
+                    view.vy = dy * ROT_SENS;
                 }
                 gesture.lastX = x;
                 gesture.lastY = y;
-            } else if (pts.size === 2 && gesture.pinchStartDist) {
+            } else if (pts.size === 2 && gesture.pinchStartDist && modelLoaded) {
                 const arr = getGesturePoints();
+                // Zoom (pinch)
                 const d = pointDist(arr[0], arr[1]);
-                const nextScale = clamp(gesture.pinchBaseScale * (d / gesture.pinchStartDist), SCALE_MIN, SCALE_MAX);
-                if (scaleState.target !== null) scaleState.target = nextScale;
+                view.t.z = clamp(gesture.pinchBaseZoom * (d / gesture.pinchStartDist), ZOOM_MIN, ZOOM_MAX);
+                // Geser posisi (gerak titik tengah dua jari)
+                const mx = (arr[0].x + arr[1].x) / 2;
+                const my = (arr[0].y + arr[1].y) / 2;
+                view.t.px = clamp(view.t.px + (mx - gesture.lastMidX) * PAN_SPEED, -PAN_LIMIT, PAN_LIMIT);
+                view.t.py = clamp(view.t.py - (my - gesture.lastMidY) * PAN_SPEED, -PAN_LIMIT, PAN_LIMIT);
+                gesture.lastMidX = mx;
+                gesture.lastMidY = my;
             }
         }
 
@@ -937,6 +959,7 @@
                 gesture.startX = gesture.lastX = remaining.x;
                 gesture.startY = gesture.lastY = remaining.y;
                 gesture.dragging = false;
+                view.vx = view.vy = 0;
             }
         }
 
@@ -947,39 +970,81 @@
             gesture.pinchStartDist = 0;
         }
 
-        function modelEntityScale() {
-            const model = document.getElementById("model-entity");
-            return model && model.object3D ? model.object3D.scale.x : 1;
-        }
-
         function clamp(v, min, max) {
             return Math.min(Math.max(v, min), max);
         }
 
-        // ================= RENDER-LOOP SMOOTHING (rotate Y only + zoom) =================
+        // Kembalikan posisi/zoom/rotasi ke awal (dipanggil tombol Reset)
+        function resetView() {
+            view.vx = view.vy = 0;
+            // putar lewat jalur terdekat supaya tidak muter balik banyak kali
+            const turn = Math.PI * 2;
+            view.t = Object.assign({}, VIEW_DEFAULT, { ry: Math.round(view.c.ry / turn) * turn });
+        }
+
+        // Normalisasi: semua model otomatis di-fit ke FIT_SIZE & dipusatkan,
+        // jadi ukuran awalnya seragam walau model aslinya beda-beda.
+        function normalizeModel() {
+            const model = document.getElementById("model-entity");
+            const pivot = document.getElementById("pivot");
+            const root = model.object3D;
+            const THREE = AFRAME.THREE;
+
+            root.position.set(0, 0, 0);
+            root.scale.set(1, 1, 1);
+            root.rotation.set(0, 0, 0);
+            root.updateMatrixWorld(true);
+
+            // Hitung bounding box di ruang lokal model (tidak terpengaruh posisi marker)
+            const inv = new THREE.Matrix4().copy(root.matrixWorld).invert();
+            const box = new THREE.Box3();
+            const tmp = new THREE.Box3();
+            root.traverse((o) => {
+                if (!o.isMesh || !o.geometry) return;
+                if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+                tmp.copy(o.geometry.boundingBox).applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld));
+                box.union(tmp);
+            });
+            if (box.isEmpty()) { console.warn("[Fit] bounding box kosong, skip normalisasi"); return; }
+
+            const size = box.getSize(new THREE.Vector3());
+            const center = box.getCenter(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z) || 1;
+            const fit = FIT_SIZE / maxDim;
+
+            root.scale.setScalar(fit);
+            root.position.copy(center).multiplyScalar(-fit); // titik tengah model = titik tengah pivot
+            console.log("[Fit] size:", size.toArray().map(n => n.toFixed(2)), "scale:", fit.toFixed(4));
+
+            pivot.object3D.rotation.order = "YXZ"; // yaw dulu, baru pitch -> terasa seperti turntable
+            resetView();
+            Object.assign(view.c, view.t);
+        }
+
+        // ================= RENDER-LOOP SMOOTHING (rotate + zoom + geser) =================
         // Loop ini jalan terus tiap frame lewat requestAnimationFrame, independen dari
         // seberapa sering event pointermove ditembak HP. Ini kunci utama biar putar &
         // zoom kerasa smooth walau device-nya kurang kencang.
         function animateModel() {
-            const model = document.getElementById("model-entity");
-            if (model && model.object3D) {
+            const pivot = document.getElementById("pivot");
+            if (pivot && pivot.object3D && modelLoaded) {
                 // --- Inertia: kalau lagi ga di-drag dan masih ada sisa "kecepatan", terus geser target ---
-                if (!gesture.dragging && Math.abs(rot.velocity) > INERTIA_MIN_VELOCITY) {
-                    rot.target += rot.velocity;
-                    rot.velocity *= INERTIA_DECAY;
+                if (!gesture.dragging && (Math.abs(view.vx) > INERTIA_MIN || Math.abs(view.vy) > INERTIA_MIN)) {
+                    view.t.ry += view.vx;
+                    view.t.rx = clamp(view.t.rx + view.vy, ROT_X_MIN, ROT_X_MAX);
+                    view.vx *= INERTIA_DECAY;
+                    view.vy *= INERTIA_DECAY;
                 } else if (!gesture.dragging) {
-                    rot.velocity = 0;
+                    view.vx = view.vy = 0;
                 }
 
-                // --- Smooth rotasi Y menuju target ---
-                rot.current += (rot.target - rot.current) * ROTATE_LERP;
-                model.object3D.rotation.set(0, rot.current, 0); // X & Z dikunci 0 = tidak bisa diputar atas/bawah
+                // --- Smooth semua nilai menuju target ---
+                const c = view.c, t = view.t;
+                for (const k of ["ry", "rx", "px", "py", "z"]) c[k] += (t[k] - c[k]) * LERP;
 
-                // --- Smooth scale (zoom) menuju target ---
-                if (scaleState.current !== null && scaleState.target !== null) {
-                    scaleState.current += (scaleState.target - scaleState.current) * SCALE_LERP;
-                    model.object3D.scale.setScalar(scaleState.current);
-                }
+                pivot.object3D.rotation.set(c.rx, c.ry, 0);
+                pivot.object3D.position.set(c.px, c.py, 0);
+                pivot.object3D.scale.setScalar(c.z);
             }
             requestAnimationFrame(animateModel);
         }
@@ -1163,14 +1228,8 @@
                 overlay.classList.add("fade-out");
                 setTimeout(() => overlay.classList.add("hidden"), 400);
 
-                if (modelEl.object3D) {
-                    modelEl.object3D.rotation.order = "YXZ";
-                    // Inisialisasi state smoothing dari nilai awal entity,
-                    // biar ga "loncat" begitu animateModel mulai jalan.
-                    rot.current = rot.target = modelEl.object3D.rotation.y;
-                    const initialScale = modelEl.object3D.scale.x || 1;
-                    scaleState.current = scaleState.target = initialScale;
-                }
+                // Auto-fit ukuran & pusatkan model (semua model jadi seragam)
+                normalizeModel();
 
                 if (isTracking) setStatus("Ketuk bagian model untuk melihat penjelasan");
             });
