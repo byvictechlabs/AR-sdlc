@@ -148,6 +148,25 @@
             width: 46px; border: none; border-radius: 14px;
             background: #e2e8f0; color: #334155; font-size: 15px; cursor: pointer;
         }
+        /* ===== PENGATUR SUARA TTS (pilih suara + kecepatan) ===== */
+        .tts-settings {
+            display: flex; flex-direction: column; gap: 8px;
+            padding: 12px 20px; border-top: 1px solid #e2e8f0;
+            background: #f8fafc;
+        }
+        .tts-field {
+            display: flex; align-items: center; gap: 10px;
+            font-size: 12px; font-weight: 700; color: #64748b;
+        }
+        .tts-field > span { flex-shrink: 0; }
+        .tts-field select {
+            flex: 1; min-width: 0; padding: 8px 10px;
+            border: 1px solid #e2e8f0; border-radius: 10px;
+            background: #fff; color: #334155;
+            font-size: 12px; font-weight: 600; outline: none;
+        }
+        .tts-field input[type="range"] { flex: 1; min-width: 0; accent-color: #2563eb; }
+        .tts-field b { color: #2563eb; min-width: 38px; text-align: right; font-size: 12px; }
 
         .hidden { display: none !important; }
 
@@ -303,6 +322,19 @@
                 <button class="btn-close" onclick="closePopup()">✕</button>
             </div>
             <div class="popup-body"><p id="popup-content"></p></div>
+            <!-- Pengatur suara TTS: pilih suara + kecepatan (tersimpan di localStorage) -->
+            <div class="tts-settings" id="tts-settings">
+                <label class="tts-field">
+                    <span>🔊 Suara</span>
+                    <select id="tts-voice" aria-label="Pilih suara TTS" onchange="onVoiceChange()"></select>
+                </label>
+                <label class="tts-field">
+                    <span>⚡ Kecepatan</span>
+                    <input type="range" id="tts-rate" min="0.6" max="1.6" step="0.1" value="0.9"
+                        aria-label="Kecepatan membaca" oninput="onRateChange(this.value)">
+                    <b id="tts-rate-val">0,9x</b>
+                </label>
+            </div>
             <div class="popup-footer">
                 <button class="btn-audio" id="btn-audio" onclick="toggleAudio()">▶ Dengarkan</button>
                 <button class="btn-stop hidden" id="btn-stop" onclick="stopAudio()">■</button>
@@ -1126,10 +1158,85 @@
         // ================= AUDIO / TTS =================
         let utterance = null;
 
-        function getIndonesianVoice() {
-            const voices = window.speechSynthesis.getVoices();
-            return voices.find((v) => v.lang.startsWith("id")) ||
-                voices.find((v) => v.lang.startsWith("ms")) || null;
+        // ---- Pengatur suara TTS (pilih suara + kecepatan) ----
+        const TTS_VOICE_KEY = "sdlc_tts_voice";   // voiceURI pilihan user
+        const TTS_RATE_KEY = "sdlc_tts_rate";     // kecepatan baca
+        let ttsVoiceList = [];
+
+        function getSavedRate() {
+            const r = parseFloat(localStorage.getItem(TTS_RATE_KEY));
+            return Number.isFinite(r) && r >= 0.6 && r <= 1.6 ? r : 0.9;
+        }
+
+        // Urutkan: suara Indonesia dulu (Google di atas), Melayu di paling bawah
+        function sortVoices(voices) {
+            const score = (v) => {
+                const lang = (v.lang || "").toLowerCase();
+                const name = (v.name || "").toLowerCase();
+                if (lang.startsWith("id")) return name.includes("google") ? 0 : 1;
+                if (lang.startsWith("ms")) return 3; // Melayu = cadangan terakhir
+                return 2;
+            };
+            return voices.slice().sort((a, b) => score(a) - score(b));
+        }
+
+        function loadVoices() {
+            const select = document.getElementById("tts-voice");
+            if (!select || !window.speechSynthesis) return;
+            const all = window.speechSynthesis.getVoices();
+            if (!all.length) return; // daftar belum siap → tunggu event onvoiceschanged
+            ttsVoiceList = sortVoices(all);
+
+            const saved = localStorage.getItem(TTS_VOICE_KEY) || "";
+            select.innerHTML = "";
+            for (const v of ttsVoiceList) {
+                const opt = document.createElement("option");
+                opt.value = v.voiceURI;
+                opt.textContent = v.name + " (" + v.lang + ")";
+                select.appendChild(opt);
+            }
+            // pakai pilihan tersimpan, atau default terbaik: suara Indonesia
+            const preferred =
+                ttsVoiceList.find((v) => v.voiceURI === saved) ||
+                ttsVoiceList.find((v) => (v.lang || "").toLowerCase().startsWith("id")) ||
+                ttsVoiceList[0];
+            if (preferred) select.value = preferred.voiceURI;
+            console.log("[TTS] Daftar suara siap:", ttsVoiceList.length, "| aktif:", select.value);
+        }
+
+        function getSelectedVoice() {
+            const select = document.getElementById("tts-voice");
+            const picked = select && select.value ? select.value : (localStorage.getItem(TTS_VOICE_KEY) || "");
+            return (
+                ttsVoiceList.find((v) => v.voiceURI === picked) ||
+                ttsVoiceList.find((v) => (v.lang || "").toLowerCase().startsWith("id")) ||
+                ttsVoiceList[0] || null
+            );
+        }
+
+        function onVoiceChange() {
+            const select = document.getElementById("tts-voice");
+            if (!select || !select.value) return;
+            localStorage.setItem(TTS_VOICE_KEY, select.value);
+            console.log("[TTS] Suara dipilih:", select.value);
+        }
+
+        function onRateChange(val) {
+            const r = parseFloat(val);
+            if (!Number.isFinite(r)) return;
+            localStorage.setItem(TTS_RATE_KEY, String(r));
+            const label = document.getElementById("tts-rate-val");
+            if (label) label.textContent = r.toFixed(1).replace(".", ",") + "x";
+        }
+
+        function initTtsSettings() {
+            // sinkronkan slider & label dengan pilihan yang tersimpan
+            const rate = getSavedRate();
+            const slider = document.getElementById("tts-rate");
+            if (slider) slider.value = String(rate);
+            const label = document.getElementById("tts-rate-val");
+            if (label) label.textContent = rate.toFixed(1).replace(".", ",") + "x";
+            loadVoices();
         }
 
         function toggleAudio() {
@@ -1153,9 +1260,9 @@
 
             window.speechSynthesis.cancel();
             utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = "id-ID";
-            utterance.rate = 0.9;
-            const voice = getIndonesianVoice();
+            const voice = getSelectedVoice();
+            utterance.lang = voice ? voice.lang : "id-ID";
+            utterance.rate = getSavedRate();
             if (voice) utterance.voice = voice;
             utterance.onend = () => {
                 btn.textContent = "▶ Dengarkan";
@@ -1267,7 +1374,12 @@
         }
 
         if (window.speechSynthesis) {
-            window.speechSynthesis.onvoiceschanged = () => {};
+            window.speechSynthesis.onvoiceschanged = loadVoices;
+            initTtsSettings();
+        } else {
+            // browser tanpa TTS → sembunyikan pengatur suara
+            const ttsBox = document.getElementById("tts-settings");
+            if (ttsBox) ttsBox.style.display = "none";
         }
         
         console.log("[INIT] Calling init()...");

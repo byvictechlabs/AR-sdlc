@@ -76,7 +76,7 @@ Agar tidak terjadi salah paham, berikut status bagian-bagian sistem saat ini:
 
 | Bagian kode | Fungsi | Status |
 | --- | --- | --- |
-| `public/learn/ar.html` (±1218 baris) | Halaman AR aktif: A-Frame 1.6.0 + MindAR 1.2.5 via CDN, Three.js via `AFRAME.THREE` | **Aktif (produksi)** |
+| `public/learn/ar.html` (±1389 baris) | Halaman AR aktif: A-Frame 1.6.0 + MindAR 1.2.5 via CDN, Three.js via `AFRAME.THREE` | **Aktif (produksi)** |
 | `app/api/*`, `app/admin/*`, `app/home/*` | API, dashboard admin, halaman publik | **Aktif (produksi)** |
 | `public/markers/targets.mind` | Seluruh marker dikompilasi menjadi satu berkas | **Aktif (produksi)** |
 | `components/ar/*` (ARViewer, StepPopup), `ar/`, `stores/ar-store.ts` | Komponen AR berbasis React | Tidak aktif (kode mati/sisa) |
