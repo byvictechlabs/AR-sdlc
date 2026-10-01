@@ -396,11 +396,7 @@ Sistem memeriksa ketersediaan audio
 ├────────────────────────────────────────────┤
 │ Mode 2 — Text-to-Speech (AKTIF)            │
 │ Browser membacakan teks materi dengan      │
-│ suara pilihan pengguna. Pengguna bisa      │
-│ memilih suara TTS & mengatur kecepatan    │
-│ (0,6x–1,6x) lewat pengatur di popup;      │
-│ pilihannya disimpan di localStorage.      │
-│ Default: suara Indonesia (rate 0,9).       │
+│ suara bahasa Indonesia (rate 0,9).         │
 └────────────────────────────────────────────┘
 ```
 
@@ -411,10 +407,6 @@ Sistem memeriksa ketersediaan audio
 | ▶ Dengarkan | Mulai membacakan materi |
 | ⏸ Jeda / Lanjutkan | Menjeda atau melanjutkan suara |
 | ■ Berhenti | Menghentikan suara |
-| 🔊 Suara (dropdown) | Memilih suara TTS dari daftar suara device (bahasa Indonesia diurutkan paling atas) |
-| ⚡ Kecepatan (slider) | Mengatur kecepatan membaca 0,6x–1,6x |
-
-Pilihan suara & kecepatan tersimpan di `localStorage` (`sdlc_tts_voice`, `sdlc_tts_rate`) — pengguna cukup memilih sekali.
 
 Audio berhenti otomatis saat popup ditutup.
 

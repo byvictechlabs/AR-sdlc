@@ -237,7 +237,7 @@ File GLB (3D Model)              Database (method_steps)
 
 ### File: `public/learn/ar.html`
 
-File ini adalah **single-file application** (~1389 baris) yang berisi semua logic AR:
+File ini adalah **single-file application** (~1277 baris) yang berisi semua logic AR:
 
 #### Komponen Utama
 
@@ -450,7 +450,7 @@ sdlc-ar/
 
 | File                                        | Penjelasan                                                                                     |
 | ------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `public/learn/ar.html`                    | **File paling penting.** Semua logic AR ada di sini. ~1389 baris. Edit dengan hati-hati. |
+| `public/learn/ar.html`                    | **File paling penting.** Semua logic AR ada di sini. ~1277 baris. Edit dengan hati-hati. |
 | `app/sw.ts`                               | Service worker — caching model 3D.                                                            |
 | `app/api/methods/by-slug/[slug]/route.ts` | API yang dipanggil oleh`ar.html` untuk load data.                                            |
 | `db/seed.ts`                              | Data awal (admin account + methods + steps).                                                   |
