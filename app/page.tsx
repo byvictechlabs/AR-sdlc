@@ -19,7 +19,7 @@ export default function SplashPage() {
       {/* --- KONTEN LAYER (Semua konten dibungkus relative z-10 agar selalu di atas background) --- */}
       
       {/* Judul SDLC AR */}
-      <div className="relative z-10 flex flex-col items-center mt-12 w-full">
+      <div className="relative z-10 flex flex-col items-center mt-6 w-full">
         <h1 className="text-4xl font-extrabold tracking-tight drop-shadow-sm">
           <span className="text-gray-900">SDLC</span>{" "}
           <span className="text-blue-600">AR</span>
@@ -28,34 +28,35 @@ export default function SplashPage() {
         <div className="h-1 bg-blue-500 w-16 rounded-full mt-3" />
       </div>
 
-      {/* Ilustrasi AR */}
-      <div className="relative z-10 my-8 w-full max-w-sm aspect-square flex items-center justify-center">
+      {/* Ilustrasi AR — fleksibel (memakan sisa ruang yang tersedia)
+          supaya tombol tetap terlihat tanpa scroll di layar kecil */}
+      <div className="relative z-10 my-2 w-full max-w-sm min-h-0 flex-1 flex items-center justify-center">
         <Image
           src="/images/ar1.png"
           alt="SDLC Augmented Reality Illustration"
           width={400} 
           height={400}
-          style={{ objectFit: 'contain' }} 
+          className="h-auto max-h-full w-auto max-w-full object-contain"
           priority 
         />
       </div>
 
       {/* Teks Deskripsi dan Tombol */}
-      <div className="relative z-10 flex flex-col items-center text-center w-full max-w-lg mb-16">
+      <div className="relative z-10 flex flex-col items-center text-center w-full max-w-lg mb-10">
         <h2 className="text-3xl font-bold leading-tight text-gray-900">
           Belajar SDLC?
           <br />
           Yuk, eksplorasi dengan AR!
         </h2>
         
-        <p className="mt-5 text-base text-gray-500 leading-relaxed max-w-xs font-medium">
+        <p className="mt-4 text-base text-gray-500 leading-relaxed max-w-xs font-medium">
           Fitur setiap tahapan SDLC secara lebih nyata, interaktif dan mudah
           dipahami.
         </p>
 
         <Link
           href="/home"
-          className="mt-14 inline-flex h-14 w-full max-w-[280px] items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-600 to-blue-400 text-lg font-bold text-white shadow-lg shadow-blue-500/40 hover:shadow-blue-500/60 active:scale-95 transition-all duration-200"
+          className="mt-8 inline-flex h-14 w-full max-w-[280px] items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-600 to-blue-400 text-lg font-bold text-white shadow-lg shadow-blue-500/40 hover:shadow-blue-500/60 active:scale-95 transition-all duration-200"
         >
           Mulai Belajar
         </Link>
