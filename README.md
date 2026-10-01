@@ -8,7 +8,7 @@ Aplikasi WebAR yang memungkinkan pengguna memindai marker AR untuk melihat model
 
 ## Daftar Isi
 
-- [Tech Stack & Alasan](#tech-stack--alasan)
+- [Tech Stack &amp; Alasan](#tech-stack--alasan)
 - [Arsitektur](#arsitektur)
 - [Kenapa Menggunakan Static HTML (bukan Next.js Component)?](#kenapa-menggunakan-static-html-bukan-nextjs-component)
 - [Database](#database)
@@ -16,9 +16,9 @@ Aplikasi WebAR yang memungkinkan pengguna memindai marker AR untuk melihat model
 - [AR Engine Detail](#ar-engine-detail)
 - [Caching Strategy](#caching-strategy)
 - [Struktur Proyek](#struktur-proyek)
-- [Peta Lengkap File & Hubungan Antar-File](#peta-lengkap-file--hubungan-antar-file)
+- [Peta Lengkap File &amp; Hubungan Antar-File](#peta-lengkap-file--hubungan-antar-file)
 - [Environment Variables](#environment-variables)
-- [Instalasi & Setup](#instalasi--setup)
+- [Instalasi &amp; Setup](#instalasi--setup)
 - [Deploy ke Vercel](#deploy-ke-vercel)
 - [API Endpoints](#api-endpoints)
 - [Admin Panel](#admin-panel)
@@ -28,20 +28,20 @@ Aplikasi WebAR yang memungkinkan pengguna memindai marker AR untuk melihat model
 
 ## Tech Stack & Alasan
 
-| Teknologi | Versi | Alasan |
-|---|---|---|
-| **Next.js** | 16.2.12 | Framework React full-stack dengan App Router, SSR, dan API routes. Dipilih karena performa SSR yang baik, ecosystem yang mature, dan deploy ke Vercel yang seamless. |
-| **React** | 19.2.4 | Library UI declarative. Digunakan untuk halaman web (home, admin, dll). **TIDAK** digunakan di halaman AR — lihat [penjelasan](#kenapa-menggunakan-static-html-bukan-nextjs-component). |
-| **MindAR** | 1.2.5 | Library AR berbasis image tracking yang berjalan di browser (WebAR). Dipilih karena gratis, open-source, tidak perlu aplikasi native, dan mendukung multiple markers. Alternatif: AR.js (kurang stabil), 8thWall (berbayar). |
-| **A-Frame** | 1.6.0 | Framework WebVR/WebAR declarative di atas Three.js. Dipilih karena integrasi native dengan MindAR, deklaratif (HTML-like), dan sudah handle rendering 3D + kamera. |
-| **Three.js** | (via A-Frame) | Library 3D low-level. Tidak digunakan langsung, tapi diakses via `AFRAME.THREE` untuk raycaster, vector math, dan manipulasi mesh di `ar.html`. |
-| **Turso (LibSQL)** | - | Database SQLite edge-compatible. Dipilih karena: (1) gratis untuk tier awal, (2) latensi rendah (replica di edge), (3) kompatibel dengan SQLite sehingga bisa dev lokal, (4) Drizzle ORM support native. Alternatif: PlanetScale (MySQL, lebih berat), Supabase (Postgres, overkill untuk use case ini). |
-| **Drizzle ORM** | 0.45.2 | TypeScript ORM type-safe untuk SQL. Dipilih karena: (1) type inference otomatis dari schema, (2) lightweight (no runtime overhead), (3) SQLite/Turso support, (4) migration tool built-in. Alternatif: Prisma (heavier, SQLite support terbatas). |
-| **NextAuth v5** | beta.32 | Authentication untuk admin panel. Dipilih karena integrasi native dengan Next.js App Router, mendukung Credentials provider (email/password), dan JWT strategy yang cocok untuk edge deployment. |
-| **Serwist (PWA)** | 9.5.12 | Service worker library untuk Next.js. Dipilih untuk: (1) offline capability, (2) caching model 3D agar tidak download ulang, (3) integrasi dengan Next.js build. Alternatif: Workbox (manual setup, tidak Next.js-native). |
-| **Tailwind CSS v4** | 4.x | Utility-first CSS. Dipilih untuk styling yang cepat, consistent design system, dan dark mode support. |
-| **shadcn/ui** | 4.15.0 | Component library berbasis Radix/Tailwind. Dipilih karena: (1) copy-paste (bukan npm dependency yang terkunci), (2) fully customizable, (3) mendukung Base UI React. |
-| **Cloudflare R2** | - | Object storage untuk hosting file GLB model 3D. Dipilih karena: (1) gratis 10GB storage, (2) tidak ada egress fee, (3) cepat (CDN global), (4) S3-compatible API. |
+| Teknologi                 | Versi         | Alasan                                                                                                                                                                                                                                                                                                   |
+| ------------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Next.js**         | 16.2.12       | Framework React full-stack dengan App Router, SSR, dan API routes. Dipilih karena performa SSR yang baik, ecosystem yang mature, dan deploy ke Vercel yang seamless.                                                                                                                                     |
+| **React**           | 19.2.4        | Library UI declarative. Digunakan untuk halaman web (home, admin, dll).**TIDAK** digunakan di halaman AR — lihat [penjelasan](#kenapa-menggunakan-static-html-bukan-nextjs-component).                                                                                                             |
+| **MindAR**          | 1.2.5         | Library AR berbasis image tracking yang berjalan di browser (WebAR). Dipilih karena gratis, open-source, tidak perlu aplikasi native, dan mendukung multiple markers. Alternatif: AR.js (kurang stabil), 8thWall (berbayar).                                                                             |
+| **A-Frame**         | 1.6.0         | Framework WebVR/WebAR declarative di atas Three.js. Dipilih karena integrasi native dengan MindAR, deklaratif (HTML-like), dan sudah handle rendering 3D + kamera.                                                                                                                                       |
+| **Three.js**        | (via A-Frame) | Library 3D low-level. Tidak digunakan langsung, tapi diakses via`AFRAME.THREE` untuk raycaster, vector math, dan manipulasi mesh di `ar.html`.                                                                                                                                                       |
+| **Turso (LibSQL)**  | -             | Database SQLite edge-compatible. Dipilih karena: (1) gratis untuk tier awal, (2) latensi rendah (replica di edge), (3) kompatibel dengan SQLite sehingga bisa dev lokal, (4) Drizzle ORM support native. Alternatif: PlanetScale (MySQL, lebih berat), Supabase (Postgres, overkill untuk use case ini). |
+| **Drizzle ORM**     | 0.45.2        | TypeScript ORM type-safe untuk SQL. Dipilih karena: (1) type inference otomatis dari schema, (2) lightweight (no runtime overhead), (3) SQLite/Turso support, (4) migration tool built-in. Alternatif: Prisma (heavier, SQLite support terbatas).                                                        |
+| **NextAuth v5**     | beta.32       | Authentication untuk admin panel. Dipilih karena integrasi native dengan Next.js App Router, mendukung Credentials provider (email/password), dan JWT strategy yang cocok untuk edge deployment.                                                                                                         |
+| **Serwist (PWA)**   | 9.5.12        | Service worker library untuk Next.js. Dipilih untuk: (1) offline capability, (2) caching model 3D agar tidak download ulang, (3) integrasi dengan Next.js build. Alternatif: Workbox (manual setup, tidak Next.js-native).                                                                               |
+| **Tailwind CSS v4** | 4.x           | Utility-first CSS. Dipilih untuk styling yang cepat, consistent design system, dan dark mode support.                                                                                                                                                                                                    |
+| **shadcn/ui**       | 4.15.0        | Component library berbasis Radix/Tailwind. Dipilih karena: (1) copy-paste (bukan npm dependency yang terkunci), (2) fully customizable, (3) mendukung Base UI React.                                                                                                                                     |
+| **Cloudflare R2**   | -             | Object storage untuk hosting file GLB model 3D. Dipilih karena: (1) gratis 10GB storage, (2) tidak ada egress fee, (3) cepat (CDN global), (4) S3-compatible API.                                                                                                                                        |
 
 ---
 
@@ -105,7 +105,7 @@ Dengan menempatkan AR experience sebagai **static HTML file** di `public/`:
 - ✅ A-Frame punya **kontrol penuh** atas DOM — tidak ada React interference
 - ✅ **Lifecycle terpisah** — AR scene hidup dan mati bersama halaman, bukan React component
 - ✅ **Zero memory leak** — saat user navigasi keluar, halaman di-destroy seluruhnya
-- ✅ **Performance optimal** — tidak ada React runtime overhead di halaman AR
+- ✅ **Performance optimal** — tidak ada React r	untime overhead di halaman AR
 - ✅ **Service Worker tetap aktif** — SW bekerja di seluruh origin, termasuk static files
 
 ### Trade-off
@@ -154,14 +154,14 @@ Dengan menempatkan AR experience sebagai **static HTML file** di `public/`:
 
 ### Penjelasan Tabel
 
-| Tabel | Fungsi |
-|---|---|
-| `sdlc_methods` | Metode SDLC (Agile, Waterfall, RAD, dll). Menyimpan info, status (draft/published/archived), path ke model 3D dan marker AR, serta `mindTargetIndex` untuk mapping ke marker di file `.mind`. |
-| `method_steps` | Tahapan dalam setiap metode. **`meshName`** adalah kunci yang menghubungkan data penjelasan dengan mesh 3D di file GLB. Ketika user mengetuk mesh, `meshName` di-lookup di tabel ini untuk mendapatkan penjelasan. |
-| `quizzes` | Kuis untuk setiap step (opsional, belum diimplementasi di UI). |
-| `users` | Admin users. Password di-hash dengan bcryptjs (12 rounds). |
-| `sessions` | Session tokens untuk NextAuth. |
-| `accounts` | OAuth provider accounts (jika digunakan). |
+| Tabel            | Fungsi                                                                                                                                                                                                                      |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sdlc_methods` | Metode SDLC (Agile, Waterfall, RAD, dll). Menyimpan info, status (draft/published/archived), path ke model 3D dan marker AR, serta`mindTargetIndex` untuk mapping ke marker di file `.mind`.                            |
+| `method_steps` | Tahapan dalam setiap metode.**`meshName`** adalah kunci yang menghubungkan data penjelasan dengan mesh 3D di file GLB. Ketika user mengetuk mesh, `meshName` di-lookup di tabel ini untuk mendapatkan penjelasan. |
+| `quizzes`      | Kuis untuk setiap step (opsional, belum diimplementasi di UI).                                                                                                                                                              |
+| `users`        | Admin users. Password di-hash dengan bcryptjs (12 rounds).                                                                                                                                                                  |
+| `sessions`     | Session tokens untuk NextAuth.                                                                                                                                                                                              |
+| `accounts`     | OAuth provider accounts (jika digunakan).                                                                                                                                                                                   |
 
 ### Koneksi: `meshName` ↔ GLB Mesh
 
@@ -241,15 +241,15 @@ File ini adalah **single-file application** (~1218 baris) yang berisi semua logi
 
 #### Komponen Utama
 
-| Bagian | Fungsi |
-|---|---|
-| **MindAR Scene** | `<a-scene mindar-image="...">` — inisialisasi AR engine dengan image tracking |
-| **Target Entity** | `<a-entity mindar-image-target="targetIndex: N">` — menempelkan model ke marker ke-N |
-| **Model Entity** | `<a-entity id="model-entity" scale="0.35 0.35 0.35">` — container model 3D |
-| **Loading Overlay** | Progress bar saat download model |
-| **Start Screen** | Layar "Mulai Kamera" sebelum AR aktif |
-| **Popup Detail** | Modal yang muncul saat mesh diklik |
-| **TTS (Text-to-Speech)** | Web Speech API — bacakan penjelasan tahap |
+| Bagian                         | Fungsi                                                                                  |
+| ------------------------------ | --------------------------------------------------------------------------------------- |
+| **MindAR Scene**         | `<a-scene mindar-image="...">` — inisialisasi AR engine dengan image tracking        |
+| **Target Entity**        | `<a-entity mindar-image-target="targetIndex: N">` — menempelkan model ke marker ke-N |
+| **Model Entity**         | `<a-entity id="model-entity" scale="0.35 0.35 0.35">` — container model 3D           |
+| **Loading Overlay**      | Progress bar saat download model                                                        |
+| **Start Screen**         | Layar "Mulai Kamera" sebelum AR aktif                                                   |
+| **Popup Detail**         | Modal yang muncul saat mesh diklik                                                      |
+| **TTS (Text-to-Speech)** | Web Speech API — bacakan penjelasan tahap                                              |
 
 #### Flow Inisialisasi
 
@@ -271,11 +271,11 @@ init()
 
 #### Gesture System
 
-| Gesture | Implementasi | Detail |
-|---|---|---|
-| **Rotate** | 1-finger drag | `rotation.y += dx * 0.025`, `rotation.x += dy * 0.025` |
-| **Pinch Zoom** | 2-finger pinch | Scale clamp: `0.08` – `3.0` |
-| **Tap** | Pointer event + drag detection | Drag threshold: `8px` (di bawah = tap, di atas = drag) |
+| Gesture              | Implementasi                   | Detail                                                     |
+| -------------------- | ------------------------------ | ---------------------------------------------------------- |
+| **Rotate**     | 1-finger drag                  | `rotation.y += dx * 0.025`, `rotation.x += dy * 0.025` |
+| **Pinch Zoom** | 2-finger pinch                 | Scale clamp:`0.08` – `3.0`                            |
+| **Tap**        | Pointer event + drag detection | Drag threshold:`8px` (di bawah = tap, di atas = drag)    |
 
 #### Mesh Click Detection
 
@@ -319,12 +319,12 @@ resolveMeshName(object)
 
 ### Scenarios
 
-| Skenario | Pertama Kali | Kedua Kali |
-|---|---|---|
-| **Buka AR page** | Download model (~30MB) + cache | Load dari cache (<1 detik) |
-| **Admin ganti model (URL beda)** | Download baru + cache | Cache baru |
-| **Admin ganti model (URL sama)** | Tetap dari cache (file lama!) | ⚠️ Perlu ganti URL |
-| **PWA offline** | ❌ Tidak bisa (butuh kamera HTTPS) | ✅ Model dari cache |
+| Skenario                               | Pertama Kali                       | Kedua Kali                 |
+| -------------------------------------- | ---------------------------------- | -------------------------- |
+| **Buka AR page**                 | Download model (~30MB) + cache     | Load dari cache (<1 detik) |
+| **Admin ganti model (URL beda)** | Download baru + cache              | Cache baru                 |
+| **Admin ganti model (URL sama)** | Tetap dari cache (file lama!)      | ⚠️ Perlu ganti URL       |
+| **PWA offline**                  | ❌ Tidak bisa (butuh kamera HTTPS) | ✅ Model dari cache        |
 
 > **Penting untuk admin:** Jika update model 3D, **WAJIB ganti URL modelPath** (misal `agile-new.glb` → `agile-v2.glb`). URL baru = cache miss = download otomatis. URL sama = service worker serve dari cache (file lama).
 
@@ -394,7 +394,7 @@ sdlc-ar/
 │   ├── ar/                       # AR components (unused in prod)
 │   │   ├── ARViewer.tsx
 │   │   └── StepPopup.tsx
-│   └── ModelPreloader.tsx        # <link rel="prefetch"> untuk model
+│   └── ModelPreloader.tsx        # <link rel="prefetch"> marker (GLB on-demand)
 │
 ├── db/
 │   ├── index.ts                  # Drizzle + Turso connection
@@ -448,12 +448,12 @@ sdlc-ar/
 
 ### File Penting
 
-| File | Penjelasan |
-|---|---|
-| `public/learn/ar.html` | **File paling penting.** Semua logic AR ada di sini. ~1218 baris. Edit dengan hati-hati. |
-| `app/sw.ts` | Service worker — caching model 3D. |
-| `app/api/methods/by-slug/[slug]/route.ts` | API yang dipanggil oleh `ar.html` untuk load data. |
-| `db/seed.ts` | Data awal (admin account + methods + steps). |
+| File                                        | Penjelasan                                                                                     |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `public/learn/ar.html`                    | **File paling penting.** Semua logic AR ada di sini. ~1218 baris. Edit dengan hati-hati. |
+| `app/sw.ts`                               | Service worker — caching model 3D.                                                            |
+| `app/api/methods/by-slug/[slug]/route.ts` | API yang dipanggil oleh`ar.html` untuk load data.                                            |
+| `db/seed.ts`                              | Data awal (admin account + methods + steps).                                                   |
 
 ---
 
@@ -496,12 +496,12 @@ AUTH_URL=https://your-domain.vercel.app
 
 ### Cara Mendapatkan Values
 
-| Variable | Cara |
-|---|---|
-| `TURSO_DATABASE_URL` | Buat database di [turso.tech](https://turso.tech) → copy URL |
-| `TURSO_AUTH_TOKEN` | Turso dashboard → create auth token |
-| `AUTH_SECRET` | Generate: `openssl rand -base64 32` |
-| `AUTH_URL` | URL production (misal: `https://ar-sdlc.vercel.app`) |
+| Variable               | Cara                                                        |
+| ---------------------- | ----------------------------------------------------------- |
+| `TURSO_DATABASE_URL` | Buat database di[turso.tech](https://turso.tech) → copy URL |
+| `TURSO_AUTH_TOKEN`   | Turso dashboard → create auth token                        |
+| `AUTH_SECRET`        | Generate:`openssl rand -base64 32`                        |
+| `AUTH_URL`           | URL production (misal:`https://ar-sdlc.vercel.app`)       |
 
 ---
 
@@ -552,6 +552,7 @@ npm run db:seed
 ```
 
 **Default admin account setelah seed:**
+
 - Email: `admin@sdlc-ar.com`
 - Password: `admin123`
 
@@ -568,15 +569,18 @@ Marker images harus di-compile ke file `.mind` menggunakan [MindAR Image Compile
 ### 6. Setup Model 3D
 
 Opsi A: **Host di Cloudflare R2** (direkomendasikan untuk file besar)
+
 1. Buat R2 bucket di Cloudflare dashboard
 2. Upload file `.glb` ke bucket
 3. Set `modelPath` di admin panel ke public URL (misal: `https://models.byvictech.site/models/agile-new.glb`)
 
 Opsi B: **Host di `public/models/`** (untuk file kecil <5MB)
+
 1. Taruh file `.glb` di `public/models/`
 2. Set `modelPath` di admin panel ke path lokal (misal: `/models/agile-new.glb`)
 
 **Tips kompresi model:**
+
 ```bash
 # Install gltf-transform
 npm install -g @gltf-transform/cli
@@ -649,48 +653,49 @@ AUTH_URL           = https://ar-sdlc.vercel.app
 
 ### Methods
 
-| Method | Endpoint | Deskripsi |
-|---|---|---|
-| `GET` | `/api/methods` | List semua methods |
-| `POST` | `/api/methods` | Buat method baru |
-| `GET` | `/api/methods/[id]` | Get method by ID |
-| `PUT` | `/api/methods/[id]` | Update method |
-| `DELETE` | `/api/methods/[id]` | Delete method (+ cascade steps) |
-| `GET` | `/api/methods/by-slug/[slug]` | Get method by slug + steps ⭐ |
+| Method     | Endpoint                        | Deskripsi                       |
+| ---------- | ------------------------------- | ------------------------------- |
+| `GET`    | `/api/methods`                | List semua methods              |
+| `POST`   | `/api/methods`                | Buat method baru                |
+| `GET`    | `/api/methods/[id]`           | Get method by ID                |
+| `PUT`    | `/api/methods/[id]`           | Update method                   |
+| `DELETE` | `/api/methods/[id]`           | Delete method (+ cascade steps) |
+| `GET`    | `/api/methods/by-slug/[slug]` | Get method by slug + steps ⭐   |
 
 ### Steps
 
-| Method | Endpoint | Deskripsi |
-|---|---|---|
-| `GET` | `/api/steps` | List semua steps |
-| `POST` | `/api/steps` | Buat step baru |
-| `GET` | `/api/steps/[id]` | Get step by ID |
-| `PUT` | `/api/steps/[id]` | Update step |
-| `DELETE` | `/api/steps/[id]` | Delete step |
+| Method     | Endpoint            | Deskripsi        |
+| ---------- | ------------------- | ---------------- |
+| `GET`    | `/api/steps`      | List semua steps |
+| `POST`   | `/api/steps`      | Buat step baru   |
+| `GET`    | `/api/steps/[id]` | Get step by ID   |
+| `PUT`    | `/api/steps/[id]` | Update step      |
+| `DELETE` | `/api/steps/[id]` | Delete step      |
 
 ### Users
 
-| Method | Endpoint | Deskripsi |
-|---|---|---|
-| `GET` | `/api/users` | List semua users |
-| `POST` | `/api/users` | Buat user baru |
-| `GET` | `/api/users/[id]` | Get user by ID |
-| `PUT` | `/api/users/[id]` | Update user |
-| `DELETE` | `/api/users/[id]` | Delete user |
+| Method     | Endpoint            | Deskripsi        |
+| ---------- | ------------------- | ---------------- |
+| `GET`    | `/api/users`      | List semua users |
+| `POST`   | `/api/users`      | Buat user baru   |
+| `GET`    | `/api/users/[id]` | Get user by ID   |
+| `PUT`    | `/api/users/[id]` | Update user      |
+| `DELETE` | `/api/users/[id]` | Delete user      |
 
 ### Auth
 
-| Method | Endpoint | Deskripsi |
-|---|---|---|
+| Method   | Endpoint                    | Deskripsi                              |
+| -------- | --------------------------- | -------------------------------------- |
 | `POST` | `/api/auth/[...nextauth]` | NextAuth handler (login, session, dll) |
 
 ### Dashboard
 
-| Method | Endpoint | Deskripsi |
-|---|---|---|
+| Method  | Endpoint                 | Deskripsi                 |
+| ------- | ------------------------ | ------------------------- |
 | `GET` | `/api/dashboard/stats` | Statistik admin dashboard |
 
 > ⭐ `/api/methods/by-slug/[slug]` — Endpoint khusus yang dipanggil oleh `ar.html` untuk mendapatkan konfigurasi metode + semua steps. Response format:
+>
 > ```json
 > {
 >   "id": "...",
@@ -717,11 +722,11 @@ AUTH_URL           = https://ar-sdlc.vercel.app
 
 ### Fitur
 
-| Halaman | Fitur |
-|---|---|
+| Halaman            | Fitur                                                                              |
+| ------------------ | ---------------------------------------------------------------------------------- |
 | `/admin/methods` | CRUD metode SDLC, search, filter status, edit modelPath/markerPath/mindTargetIndex |
-| `/admin/steps` | CRUD tahapan, search, filter by method, edit meshName/title/description/content |
-| `/admin/users` | CRUD users, assign roles (admin/super_admin) |
+| `/admin/steps`   | CRUD tahapan, search, filter by method, edit meshName/title/description/content    |
+| `/admin/users`   | CRUD users, assign roles (admin/super_admin)                                       |
 
 ### Edit Dialog
 
@@ -736,6 +741,7 @@ Form edit dialog mendukung scrolling (`max-h-[70vh] overflow-y-auto`) sehingga t
 **Gejala:** Halaman putih kosong, tidak ada konten.
 
 **Penyebab umum:**
+
 1. `shadcn` package tidak ada di `package.json` → `npm install shadcn`
 2. `@import "shadcn/tailwind.css"` tidak ada di `globals.css` → tambahkan
 3. Console Ninja VS Code extension inject script → disable extension atau clean `npm install`
@@ -759,6 +765,7 @@ Form edit dialog mendukung scrolling (`max-h-[70vh] overflow-y-auto`) sehingga t
 **Gejala:** Marker terdeteksi tapi model tidak muncul.
 
 **Cek:**
+
 1. `modelPath` di database benar (buka `/api/methods/by-slug/agile` di browser)
 2. URL model bisa diakses (buka langsung di browser)
 3. CORS header dari R2 sudah benar
@@ -769,6 +776,7 @@ Form edit dialog mendukung scrolling (`max-h-[70vh] overflow-y-auto`) sehingga t
 **Gejala:** Ketuk model tapi tidak ada popup.
 
 **Debug:**
+
 1. Buka devtools console → lihat `[Model] Mesh names in GLB:` dan `[Model] Steps in DB:`
 2. Bandingkan — jika mesh name di GLB tidak ada di DB, update `meshName` di admin panel
 3. Jika mesh tidak terdeteksi sama sekali, cek scale model (terlalu kecil = raycaster susah)
@@ -786,6 +794,7 @@ Form edit dialog mendukung scrolling (`max-h-[70vh] overflow-y-auto`) sehingga t
 **Gejala:** Setiap buka AR, model download dari awal.
 
 **Cek:**
+
 1. Service worker ter-registrasi: devtools → Application → Service Workers
 2. Cache `ar-models-v1` ada: devtools → Application → Cache Storage
 3. Jika SW tidak aktif, cek `app/sw.ts` dan `next.config.ts` (Serwist config)
@@ -800,16 +809,16 @@ Form edit dialog mendukung scrolling (`max-h-[70vh] overflow-y-auto`) sehingga t
 
 ## Build Info
 
-| Item | Value |
-|---|---|
-| **Framework** | Next.js 16.2.12 (App Router) |
-| **Build command** | `next build --webpack` |
-| **Node** | 18.x+ |
-| **Package manager** | npm |
-| **Deploy** | Vercel (auto-deploy dari `main` branch) |
-| **Domain** | `ar-sdlc.vercel.app` |
-| **Model hosting** | Cloudflare R2 (`models.byvictech.site`) |
-| **Database** | Turso SQLite (edge replicas) |
+| Item                      | Value                                     |
+| ------------------------- | ----------------------------------------- |
+| **Framework**       | Next.js 16.2.12 (App Router)              |
+| **Build command**   | `next build --webpack`                  |
+| **Node**            | 18.x+                                     |
+| **Package manager** | npm                                       |
+| **Deploy**          | Vercel (auto-deploy dari`main` branch)  |
+| **Domain**          | `ar-sdlc.vercel.app`                    |
+| **Model hosting**   | Cloudflare R2 (`models.byvictech.site`) |
+| **Database**        | Turso SQLite (edge replicas)              |
 
 ---
 
