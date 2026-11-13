@@ -44,7 +44,7 @@ per-file) ditujukan untuk yang akan membaca atau mengubah kode.
 | **Static HTML (`ar.html`)** | Halaman HTML biasa di luar React — dipakai untuk pengalaman AR agar tidak bentrok dengan A-Frame. |
 | **Mesh** | Satu potongan objek 3D = satu tahapan SDLC. |
 | **GLB** | Format file model 3D. |
-| **Stage model** | Model 3D khusus satu tahap yang menggantikan model utama saat tahap diklik; sumbernya kolom `stageModelUrl` atau model hardcode di `ar.html`. |
+| **Stage model** | Model 3D khusus satu tahap yang menggantikan model utama saat tahap diklik; sumbernya kolom `stageModelUrl` atau model hardcode di `public/learn/stage-models.js`. |
 | **Marker / MindAR / A-Frame** | Lihat glosarium di [`AR_SYSTEM.md`](./AR_SYSTEM.md). |
 
 ---
@@ -178,7 +178,7 @@ Step 5  Baca file-nya         → Ikuti hubungan di §5 & §6 untuk telusuri dep
        │   ├─ MindAR scan marker ke-n di targets.mind
        │   ├─ targetFound → model muncul (dari cache, <1 detik)
        │   ├─ tap mesh → raycaster → resolveMeshName → stepsData[mesh]
-       │   │        → highlight hijau + popup + TTS
+       │   │        → highlight hijau + model tahap + tombol aksi → popup + TTS
        │   └─ gesture: drag=rotate Y, pinch=zoom
        │
 ⑤  Kembali / tutup → selesai
@@ -249,6 +249,8 @@ Setelah login:
 ```
 
 ### 3.5 Alur Runtime AR (di dalam `public/learn/ar.html`)
+
+> **Catatan file split:** logika model 3D tahap (fungsi `showStageModel()`, `hideStageModel()`, `showStageCTA()`, `hideStageCTA()`, `openDetailFromStage()`, `detectStageType()`, `STAGE_BUILDERS`, state `stageToken`/`stageStep`) berada di **`public/learn/stage-models.js`** (371 baris), dipisah dari ar.html. File itu dimuat lewat `<script src="/learn/stage-models.js">` (ar.html baris 348) **sebelum** script inline ar.html, sehingga dipanggil sebagai fungsi global. Posisi ar.html baris 1150 kini berisi komentar penunjuk bahwa logikanya sudah pindah. Perilaku aplikasi tidak berubah — murni pemisahan file.
 
 ```
 Page load
@@ -367,7 +369,8 @@ sdlc-ar/
 ├── middleware.ts                   🔒 jaga /admin/* via lib/auth
 │
 ├── public/                         ─ aset yang di-serve apa adanya
-│   ├── learn/ar.html               ⭐⭐ AR ENGINE (file terpenting, 1671 baris; stage model + tombol aksi)
+│   ├── learn/ar.html               ⭐⭐ AR ENGINE (file terpenting, 1328 baris; popup, gesture, init)
+│   ├── learn/stage-models.js       ⭐ model 3D tahap + tombol aksi (371 baris, dipisah dari ar.html)
 │   ├── markers/targets.mind        ⭐ compiled MindAR target (SEMUA marker)
 │   ├── markers/targets3.mind       🗑 backup compile lama
 │   ├── models/agile-2.glb          backup model lokal
@@ -502,7 +505,8 @@ Semua error dilempar ke **`lib/api-error.ts`** (Zod→400, UNIQUE→409, FK→40
 
 | File                                         | Fungsi                                                                                                                                                                                                                                                                                                                                                                                                 | Hubungan                                                                                                                                  |
 | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| **`public/learn/ar.html`** ⭐⭐      | **AR ENGINE — file terpenting proyek (1671 baris), termasuk stage model per tahap + tombol aksi (hardcode `STAGE_BUILDERS` + jalur `stageModelUrl`).** Berisi: start screen, MindAR scene (`mindar-image` + `imageTargetSrc:/markers/targets.mind`), `loadFromDB()`, `applyTargetIndex()` (patch anchor MindAR), gesture (rotate Y / pinch zoom / tap 8px), raycaster + bounding-sphere klik mesh, popup detail + TTS, entity `#stage-entity` (model 3D tahap, saudara `#model-entity` dalam `#pivot`), elemen `<div id="stage-cta">` (tombol "📋 Lihat Penjelasan" + "✕", fixed bottom 126px), fungsi `detectStageType()` / `showStageModel()` (return boolean) / `hideStageModel()` / `showStageCTA()` / `hideStageCTA()` / `openDetailFromStage()` / `fitStageGltf()`, state `stageStep` + `stageToken`, debug overlay, progress download model, `cleanSlug` safety net. | Dibuka via`MethodCard` & `app/learn/[slug]`. Fetch `/api/methods/by-slug/`. Baca cache `ar-models-v1`. Register `public/sw.js`. |
+| **`public/learn/ar.html`** ⭐⭐      | **AR ENGINE — file terpenting proyek (1328 baris).** Berisi: start screen, MindAR scene (`mindar-image` + `imageTargetSrc:/markers/targets.mind`), `loadFromDB()`, `applyTargetIndex()` (patch anchor MindAR), gesture (rotate Y / pinch zoom / tap 8px), raycaster + bounding-sphere klik mesh, `handleClick()` → `openPopup()` / `closePopup()` / `targetLost()`, popup detail + TTS, entity `#stage-entity` (model 3D tahap, saudara `#model-entity` dalam `#pivot`), elemen `<div id="stage-cta">` (tombol "📋 Lihat Penjelasan" + "✕", fixed bottom 126px), debug overlay, progress download model, `cleanSlug` safety net. Memuat `<script src="/learn/stage-models.js">` (baris 348) **sebelum** script inline-nya sendiri. | Dibuka via`MethodCard` & `app/learn/[slug]`. Fetch `/api/methods/by-slug/`. Baca cache `ar-models-v1`. Register `public/sw.js`. |
+| **`public/learn/stage-models.js`** ⭐ | **Logika model 3D tahap (Stage Model) — 371 baris, DIPISAH dari ar.html.** Script klasik (bukan module), dimuat sebelum script inline ar.html sehingga seluruh fungsinya jadi global. Berisi: `STAGE_BUILDERS` (7 model prosedural), `detectStageType()`, `stageEntity()` / `stageBox()` / `stageWrap()`, `showStageModel()` (return boolean) / `hideStageModel()`, `activateStageSwap()`, `fitStageGltf()`, `showStageCTA()` / `hideStageCTA()` / `openDetailFromStage()`, state `stageToken` + `stageStep`. | Dipanggil global oleh`ar.html` (`handleClick()`, `openPopup()`, `closePopup()`, `targetLost()`). Butuh `FIT_SIZE`, `AFRAME`, `resetView()`, `openPopup()` dari ar.html. |
 | **`public/markers/targets.mind`** ⭐ | Compiled MindAR target — berisi SEMUA marker dalam 1 file.**Urutan upload di compiler = `mindTargetIndex` di DB** (waterfall 0, agile 1, rad 2).                                                                                                                                                                                                                                              | Dirujuk`ar.html` (`imageTargetSrc`) & `ModelPreloader` (prefetch).                                                                  |
 | `public/markers/targets3.mind` 🗑          | Compile lama/backup — tak direferensikan.                                                                                                                                                                                                                                                                                                                                                             | —                                                                                                                                        |
 | `public/models/agile-2.glb`                | Backup model lokal (Draco+WebP). Model produksi di R2.                                                                                                                                                                                                                                                                                                                                                 | Tak direferensikan kode.                                                                                                                  |
@@ -600,7 +604,7 @@ JEMBATAN 2: mindTargetIndex  (Database ↔ File .mind)
 7. **Ganti model 3D = WAJIB ganti URL** (`agile.glb` → `agile-v2.glb`) supaya cache bust. URL sama = file lama terus.
 8. **Recompile `targets.mind` = cocokkan ulang `mindTargetIndex`** di `/admin/methods`.
 9. **`.env.example` tidak sinkron** dengan nama variabel yang dibaca kode (`TURSO_DATABASE_URL`/`TURSO_AUTH_TOKEN`).
-10. **Log debugging di ar.html**: `[INIT]`, `[DB]`, `[AR]`, `[LoadCache]`, `[Model]`, `[Stage]`, `[Click]`, `[Highlight]` — aktifkan console browser saat tes. Contoh log stage: `[Stage] Tanpa model (URL kosong & tipe tak dikenal) → popup langsung`.
+10. **Log debugging di `public/learn/ar.html`**: `[INIT]`, `[DB]`, `[AR]`, `[LoadCache]`, `[Model]`, `[Click]`, `[Highlight]` — aktifkan console browser saat tes. Log **`[Stage]`** kini dicetak dari `public/learn/stage-models.js`. Contoh log stage: `[Stage] Tanpa model (URL kosong & tipe tak dikenal) → popup langsung`.
 
 ---
 

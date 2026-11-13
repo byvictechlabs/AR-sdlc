@@ -77,7 +77,8 @@ Agar tidak terjadi salah paham, berikut status bagian-bagian sistem saat ini:
 
 | Bagian kode | Fungsi | Status |
 | --- | --- | --- |
-| `public/learn/ar.html` (±1671 baris) | Halaman AR aktif: A-Frame 1.6.0 + MindAR 1.2.5 via CDN, Three.js via `AFRAME.THREE` | **Aktif (produksi)** |
+| `public/learn/ar.html` (±1328 baris) | Halaman AR aktif: A-Frame 1.6.0 + MindAR 1.2.5 via CDN, Three.js via `AFRAME.THREE`; memuat `<script src="/learn/stage-models.js">` | **Aktif (produksi)** |
+| `public/learn/stage-models.js` (±371 baris) | Logika model 3D tahap (stage model) + tombol aksi; script klasik yang dimuat sebelum script inline ar.html (dipisah dari ar.html) | **Aktif (produksi)** |
 | `app/api/*`, `app/admin/*`, `app/home/*` | API, dashboard admin, halaman publik | **Aktif (produksi)** |
 | `public/markers/targets.mind` | Seluruh marker dikompilasi menjadi satu berkas | **Aktif (produksi)** |
 | `components/ar/*` (ARViewer, StepPopup), `ar/`, `stores/ar-store.ts` | Komponen AR berbasis React | Tidak aktif (kode mati/sisa) |
@@ -367,7 +368,8 @@ Daftar metode pada halaman `/home/mulai-belajar` juga tidak mengambil database s
 ## Halaman AR statis (`public/learn/ar.html`)
 
 ```
-ar.html
+ar.html (1328 baris)
+├── <script src="/learn/stage-models.js">   → logika model 3D tahap (371 baris, dipisah dari ar.html)
 ├── Overlay loading & status kamera
 ├── Scene A-Frame
 │   ├── Kamera
@@ -439,7 +441,8 @@ sdlc-ar/
 ├── types/                    → deklarasi tipe (next-auth.d.ts)
 │
 ├── public/
-│   ├── learn/ar.html         → HALAMAN AR AKTIF
+│   ├── learn/ar.html         → HALAMAN AR AKTIF (1328 baris)
+│   ├── learn/stage-models.js → logika model 3D tahap (371 baris, dipisah dari ar.html)
 │   ├── markers/targets.mind  → seluruh marker dalam satu berkas
 │   ├── models/               → cadangan model GLB
 │   ├── audio/, images/

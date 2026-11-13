@@ -84,6 +84,7 @@ Sistem AR dibangun dengan teknologi berikut:
 **Catatan penting:**
 
 - Halaman AR ditulis sebagai **file HTML statis** (`public/learn/ar.html`), **bukan** komponen React. Alasannya: A-Frame mengontrol DOM secara langsung dan bentrok dengan siklus hidup React (lihat `README.md` — bagian *Kenapa Menggunakan Static HTML*).
+- Logika model 3D tahap (stage model) dipisah ke file sendiri: **`public/learn/stage-models.js`** (371 baris), dimuat sebelum script inline `ar.html` (1328 baris) — lihat bagian 5.1.
 - **React Three Fiber tidak dipakai** pada versi produksi. (Kode React AR lama masih ada di repo sebagai arsip, tetapi tidak aktif.)
 - MindAR dan A-Frame dimuat dari CDN — tidak perlu instalasi apapun di perangkat pengguna.
 
@@ -185,6 +186,8 @@ Setiap metode memiliki satu file model 3D dengan format GLB.
 
 Fitur **Stage Model** membuat model 3D khusus tahap yang diklik **menggantikan model utama** di atas marker (pilihan tampilan "ganti di marker"). Popup materi **tidak langsung terbuka** — yang muncul lebih dulu adalah **tombol aksi** di layar; popup baru terbuka setelah pengguna menekan tombol **"📋 Lihat Penjelasan"**.
 
+**Lokasi kode:** logika fitur ini berada di **`public/learn/stage-models.js`** (371 baris), yang **dipisah dari `public/learn/ar.html`** (1328 baris) — murni pemisahan file, perilaku aplikasi tidak berubah. File itu berupa script klasik (bukan module) dan dimuat lewat `<script src="/learn/stage-models.js">` **sebelum** script inline ar.html, sehingga seluruh fungsi di dalamnya menjadi global. Elemen HTML `<div id="stage-cta">` dan CSS-nya tetap berada di ar.html.
+
 **Alur singkat:**
 
 ```
@@ -211,7 +214,7 @@ Tombol "✕" aksi → keluar mode tahap → model utama tampil kembali
 | Prioritas | Sumber | Cara kerja |
 | --- | --- | --- |
 | 1 | **GLB dari database** | Kolom opsional `stageModelUrl` pada tabel `method_steps`, diisi lewat form admin `/admin/steps` (label: *"Stage Model URL (opsional — GLB 3D tahap di R2)"*). File GLB disimpan di R2 (`https://models.byvictech.site/models/stages/...`); yang masuk database hanya URL-nya. |
-| 2 | **Model hardcode** | Dibangun dari kode A-Frame primitives di `ar.html` (`STAGE_BUILDERS`) — tidak memakai file sama sekali. Dipakai bila URL kosong atau GLB gagal dimuat. |
+| 2 | **Model hardcode** | Dibangun dari kode A-Frame primitives di `public/learn/stage-models.js` (`STAGE_BUILDERS`, dipisah dari ar.html) — tidak memakai file sama sekali. Dipakai bila URL kosong atau GLB gagal dimuat. |
 | 3 | **Perilaku lama** | Bila keduanya tidak tersedia (`showStageModel()` mengembalikan `false`): model utama tetap terlihat dan **popup terbuka langsung** tanpa tombol aksi (persis seperti versi sebelumnya). |
 
 **7 jenis model hardcode** — dipilih oleh fungsi `detectStageType()` berdasarkan kata kunci di nama mesh (urutan deteksi dari atas ke bawah):
@@ -239,7 +242,7 @@ Tombol "✕" aksi → keluar mode tahap → model utama tampil kembali
 - `stageToken` (penghitung token) **dinaikkan saat keluar mode tahap** (tombol `✕` aksi atau `targetLost`) — bukan saat popup ditutup — sehingga proses load GLB tahap yang belum selesai otomatis batal dan respons lambat tidak menampilkan model yang sudah tidak diminta.
 - Marker hilang (`targetLost`) → `closePopup()` lalu `hideStageModel()` → **membersihkan model tahap dan tombol aksi sekaligus**.
 
-**Fungsi terkait di `public/learn/ar.html`:** `detectStageType()`, `stageEntity()`, `stageBox()`, `stageWrap()`, `STAGE_BUILDERS`, `hideStageModel()`, `activateStageSwap()`, `fitStageGltf()`, `showStageModel(step, meshName)` (**return boolean**), `showStageCTA()`, `hideStageCTA()`, `openDetailFromStage()`.
+**Fungsi terkait di `public/learn/stage-models.js`** (dipisah dari ar.html, dimuat sebelum script inline ar.html): `detectStageType()`, `stageEntity()`, `stageBox()`, `stageWrap()`, `STAGE_BUILDERS`, `hideStageModel()`, `activateStageSwap()`, `fitStageGltf()`, `showStageModel(step, meshName)` (**return boolean**), `showStageCTA()`, `hideStageCTA()`, `openDetailFromStage()`.
 
 **Sambungan dengan alur klik:**
 
@@ -290,7 +293,7 @@ Saat mode tahap aktif, pengguna **tidak langsung** membuka popup. Layar menampil
      animasi masuk: ctaIn
 ```
 
-**Elemen & CSS baru di `public/learn/ar.html`:**
+**Elemen & CSS (tetap di `public/learn/ar.html`; logika tombolnya di `stage-models.js`):**
 
 - `<div id="stage-cta" class="hidden">` berisi `<button class="stage-cta-detail">📋 Lihat Penjelasan</button>` dan `<button class="stage-cta-close">✕</button>`.
 - CSS baru: `#stage-cta` (fixed, bottom 126px, z-index 80, animasi `ctaIn`), `.stage-cta-detail` (biru `#2563eb`), `.stage-cta-close`.
@@ -324,6 +327,8 @@ Saat mode tahap aktif, pengguna **tidak langsung** membuka popup. Layar menampil
 | `handleClick()` | Guard `if (stageStep) return;` + percabangan `if (showStageModel(...)) showStageCTA(); else openPopup(...)` |
 | `hideStageModel()` | Membersihkan `stageStep` + tombol aksi |
 | `targetLost` | `closePopup()` lalu `hideStageModel()` |
+
+**Catatan file split:** `hideStageModel()` kini berada di `public/learn/stage-models.js`, sedangkan `openPopup()`, `closePopup()`, `handleClick()`, dan `targetLost()` tetap di `public/learn/ar.html`. Keduanya saling memanggil sebagai fungsi global karena `stage-models.js` dimuat sebelum script inline ar.html.
 
 > Detail teks materi dan kontrol TTS **tetap ada** — hanya waktu bukanya yang dipindah ke tombol. Tabel kontrol popup (Dengarkan / Jeda / Berhenti) tidak berubah.
 
@@ -525,7 +530,7 @@ Popup materi terbuka
 
 # 14. State Flow (Alur State di Halaman AR)
 
-Halaman AR ditulis dalam JavaScript murni (bukan React), sehingga state disimpan sebagai variabel di dalam `public/learn/ar.html`:
+Halaman AR ditulis dalam JavaScript murni (bukan React), sehingga state disimpan sebagai variabel di dalam `public/learn/ar.html` (state model tahap `stageToken` dan `stageStep` ada di `public/learn/stage-models.js`):
 
 ```
 Mutasi (perubahan state)

@@ -240,7 +240,7 @@ File GLB (3D Model)              Database (method_steps)
 
 ### File: `public/learn/ar.html`
 
-File ini adalah **single-file application** (1671 baris) yang berisi semua logic AR:
+File ini adalah **inti aplikasi AR** (1328 baris) yang berisi sebagian besar logic AR. Logika model 3D tahap (stage model) dipisah ke file pendukung **`public/learn/stage-models.js`** (371 baris) yang dimuat sebelum script inline ar.html.
 
 #### Komponen Utama
 
@@ -424,7 +424,8 @@ sdlc-ar/
 │
 ├── public/
 │   ├── learn/
-│   │   └── ar.html               # ⭐ AR experience (static HTML)
+│   │   ├── ar.html               # ⭐ AR experience (static HTML, 1328 baris)
+│   │   └── stage-models.js       # model 3D tahap + tombol aksi (371 baris)
 │   ├── models/
 │   │   ├── agile-2.glb           # Compressed model (Draco + WebP)
 │   │   └── agile-new-original-backup.glb  # [gitignored] Original 33MB
@@ -458,7 +459,8 @@ sdlc-ar/
 
 | File                                        | Penjelasan                                                                                     |
 | ------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `public/learn/ar.html`                    | **File paling penting.** Semua logic AR ada di sini. 1671 baris. Edit dengan hati-hati. |
+| `public/learn/ar.html`                    | **File paling penting.** Inti logic AR (scene, gesture, popup, TTS). 1328 baris. Edit dengan hati-hati. |
+| `public/learn/stage-models.js`            | Logika model 3D tahap + tombol aksi; dipisah dari ar.html (371 baris), dimuat sebelum script inline ar.html. |
 | `app/sw.ts`                               | Service worker — caching model 3D.                                                            |
 | `app/api/methods/by-slug/[slug]/route.ts` | API yang dipanggil oleh`ar.html` untuk load data.                                            |
 | `db/seed.ts`                              | Data awal (admin account + methods + steps).                                                   |
