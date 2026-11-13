@@ -238,6 +238,7 @@ Tasks
 - Render Scene
 - Raycaster
 - Mesh Interaction
+- Stage Model — model 3D detail per tahap yang menggantikan model utama (GLB dari admin `stageModelUrl` + model hardcode `STAGE_BUILDERS`), dengan tombol aksi **"📋 Lihat Penjelasan"** untuk membuka popup: implementasi awal selesai
 
 Implementasi
 

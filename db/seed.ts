@@ -39,7 +39,7 @@ async function main() {
       slug: "waterfall",
       description:
         "A linear sequential software development life cycle model where each phase must be completed before the next phase begins.",
-      modelPath: "/models/waterfall.glb",
+      modelPath: "https://models.byvictech.site/models/waterfall1.glb",
       markerPath: "/markers/waterfall.png",
       status: "published" as const,
       sortOrder: 1,
@@ -61,7 +61,7 @@ async function main() {
       slug: "rad",
       description:
         "Rapid Application Development is a type of incremental software development model that focuses on rapid prototyping and iterative delivery.",
-      modelPath: "/models/rad.glb",
+      modelPath: "https://models.byvictech.site/models/RAD.glb",
       markerPath: "/markers/rad.png",
       status: "published" as const,
       sortOrder: 3,

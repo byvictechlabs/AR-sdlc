@@ -269,7 +269,7 @@ Jangan membiarkan Promise tanpa penanganan error.
 | Implementasi AR aktif berada di `public/learn/ar.html` (A-Frame 1.6.0 + MindAR 1.2.5 via CDN, Three.js via `AFRAME.THREE`) | Halaman inilah yang dipakai pengguna; perubahan di tempat lain tidak berdampak pada fitur AR. |
 | React Three Fiber **tidak dipakai di produksi**; komponen AR React (`components/ar/*`, `ar/`, `stores/ar-store.ts`) adalah kode lama | Mencegah developer mengaktifkan kembali jalur ganda yang sudah tidak dipakai. |
 | Pisahkan kode AR (scene, raycaster, pemuatan model) dari kode UI React | Kode 3D dan kode halaman punya siklus hidup berbeda; mencampurnya membuat keduanya sulit diubah. |
-| Jangan mengubah alur AR (scan → load GLB → klik mesh → popup → audio) tanpa persetujuan | Alur tersebut adalah inti produk dan sudah divalidasi pada pengujian. |
+| Jangan mengubah alur AR (scan → load GLB → klik mesh → model 3D tahap + tombol aksi → popup → audio) tanpa persetujuan | Alur tersebut adalah inti produk dan sudah divalidasi pada pengujian. Revisi terakhir (model tahap + tombol "Lihat Penjelasan") sudah disetujui pemilik proyek. |
 
 **Kenapa:** Fitur AR adalah bagian paling sensitif terhadap perubahan; menjaga satu jalur implementasi yang jelas mengurangi risiko regresi.
 

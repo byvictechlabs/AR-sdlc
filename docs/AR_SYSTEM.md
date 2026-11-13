@@ -29,6 +29,8 @@ Pembaca non-teknis cukup memahami **bagian 1–5 dan 14–16** (alur pengguna, m
 | **Three.js** | Library 3D dasar yang dipakai A-Frame di belakang layar (rendering, kamera, perhitungan posisi). |
 | **Mesh** | Satu potongan/permukaan objek 3D. Di aplikasi ini, **setiap tahapan SDLC = satu mesh terpisah** sehingga bisa diklik satu per satu. |
 | **GLB** | Format file model 3D (mirip JPG untuk foto — satu file berisi seluruh objek, tekstur, dan nama mesh). |
+| **Stage Model (model tahap)** | Model 3D khusus satu tahapan yang menggantikan model utama di atas marker saat tahap itu diklik; bisa berupa file GLB dari database atau model bawaan dari kode. Popup materi baru terbuka setelah tombol **"📋 Lihat Penjelasan"** ditekan. |
+| **Tombol aksi (stage CTA)** | Tombol tetap di layar (`📋 Lihat Penjelasan` + `✕`) yang muncul saat mode tahap aktif; menjadi jalan membuka popup atau keluar dari mode tahap. |
 | **Raycaster** | Teknik menentukan objek 3D mana yang disentuh pengguna — bekerja seperti "sinar tak terlihat" dari titik sentuh layar ke arah model. |
 | **TTS (Text-to-Speech)** | Fitur browser yang mengubah teks menjadi suara, sehingga materi bisa "dibacakan" tanpa file audio. |
 | **Cache** | Penyimpanan sementara di browser. File yang sudah pernah diunduh tidak diunduh ulang, sehingga tampil lebih cepat. |
@@ -55,6 +57,11 @@ Arahkan kamera ke marker cetak
 Marker terdeteksi → model 3D muncul di atas marker
       ↓
 Ketuk salah satu tahapan (bagian model)
+      ↓
+Model 3D tahap menggantikan model utama
++ tombol aksi muncul: "📋 Lihat Penjelasan" dan "✕"
+      ↓
+Tombol "📋 Lihat Penjelasan" diklik
       ↓
 Popup materi tampil + tombol "Dengarkan" (suara)
 ```
@@ -105,9 +112,16 @@ Sistem AR dibangun dengan teknologi berikut:
 ├─────────────────────────────────┤
 │ 9. Nama mesh dibaca (mesh.name) │  dicocokkan dengan database tahapan
 ├─────────────────────────────────┤
-│ 10. Materi tampil (popup)       │  judul + penjelasan tahapan
+│ 10. Model 3D tahap tampil       │  model tahap menggantikan model utama
+│    (stage model)                │  (di atas marker, ikut gesture)
 ├─────────────────────────────────┤
-│ 11. Suara diputar (opsional)    │  tombol "Dengarkan" → Text-to-Speech
+│ 10b. Tombol aksi tampil         │  "📋 Lihat Penjelasan" + "✕"
+│     (fixed, bottom 126px)       │  popup BELUM terbuka
+├─────────────────────────────────┤
+│ 11. Materi tampil (popup)       │  saat tombol "📋 Lihat Penjelasan" diklik
+│                                 │  judul + penjelasan tahapan
+├─────────────────────────────────┤
+│ 12. Suara diputar (opsional)    │  tombol "Dengarkan" → Text-to-Speech
 └─────────────────────────────────┘
 ```
 
@@ -166,6 +180,152 @@ Setiap metode memiliki satu file model 3D dengan format GLB.
 - **Model TIDAK disimpan di database** — database hanya menyimpan *alamat/URL* modelnya.
 - File di `public/models/` hanya berisi cadangan lokal, bukan sumber utama.
 - Model dimuat **hanya setelah marker terdeteksi**, dan di-cache di browser supaya tidak unduh ulang.
+
+## 5.1 Stage 3D Model (Model 3D Khusus Tahap)
+
+Fitur **Stage Model** membuat model 3D khusus tahap yang diklik **menggantikan model utama** di atas marker (pilihan tampilan "ganti di marker"). Popup materi **tidak langsung terbuka** — yang muncul lebih dulu adalah **tombol aksi** di layar; popup baru terbuka setelah pengguna menekan tombol **"📋 Lihat Penjelasan"**.
+
+**Alur singkat:**
+
+```
+Pengguna klik mesh tahap
+        ↓
+showStageModel(step, meshName) → true (ada model tahap)
+        ↓
+Model utama disembunyikan → model 3D tahap muncul di atas marker
+        ↓
+Tombol aksi tampil: "📋 Lihat Penjelasan" + "✕"
+        ↓
+Tombol "📋 Lihat Penjelasan" diklik (openDetailFromStage)
+        ↓
+Popup materi terbuka (teks materi + kontrol TTS, persis seperti sebelumnya)
+        ↓
+Popup ditutup (✕ popup / backdrop) → popup hilang,
+        model tahap TETAP tampil, tombol aksi muncul lagi
+        ↓
+Tombol "✕" aksi → keluar mode tahap → model utama tampil kembali
+```
+
+**Dua sumber model tahap (urutan prioritas):**
+
+| Prioritas | Sumber | Cara kerja |
+| --- | --- | --- |
+| 1 | **GLB dari database** | Kolom opsional `stageModelUrl` pada tabel `method_steps`, diisi lewat form admin `/admin/steps` (label: *"Stage Model URL (opsional — GLB 3D tahap di R2)"*). File GLB disimpan di R2 (`https://models.byvictech.site/models/stages/...`); yang masuk database hanya URL-nya. |
+| 2 | **Model hardcode** | Dibangun dari kode A-Frame primitives di `ar.html` (`STAGE_BUILDERS`) — tidak memakai file sama sekali. Dipakai bila URL kosong atau GLB gagal dimuat. |
+| 3 | **Perilaku lama** | Bila keduanya tidak tersedia (`showStageModel()` mengembalikan `false`): model utama tetap terlihat dan **popup terbuka langsung** tanpa tombol aksi (persis seperti versi sebelumnya). |
+
+**7 jenis model hardcode** — dipilih oleh fungsi `detectStageType()` berdasarkan kata kunci di nama mesh (urutan deteksi dari atas ke bawah):
+
+| Kata kunci pada nama mesh | Jenis | Bentuk model |
+| --- | --- | --- |
+| `MAINTENANCE` | maintenance | dua roda gigi |
+| `REVIEW` / `FEEDBACK` | review | papan kanban |
+| `DEPLOY` / `CUTOVER` / `LAUNCH` / `RELEASE` | deployment | roket + api |
+| `TEST` | testing | dokumen + bug + kaca pembesar |
+| `IMPLEMENT` / `DEVELOP` / `CONSTRUCTION` / `CODING` | coding | monitor + keyboard |
+| `DESIGN` | design | blueprint + kubus wireframe + pensil |
+| `REQUIREMENT` / `ANALYS` / `PLANN` | requirements | papan klip + kaca pembesar |
+
+**Sifat model tahap:**
+
+- **Ikut gesture** (putar / zoom / geser) karena entity model tahap berada di dalam `#pivot`, bersama model utama.
+- **Auto-fit**: ukuran GLB tahap disesuaikan otomatis ke ukuran standar (`fitStageGltf()`), sama seperti normalisasi model utama.
+- Model tahap memakai **platform dasar + grup animasi putar pelan 16 detik** (`stageWrap()`), sehingga tampilan selaras dengan model utama.
+- Pembentukan model: `stageEntity()` (wadah) dan `stageBox()` (kotak ukuran) untuk mode hardcode.
+- Selama mode tahap aktif, **ketukan bebas di scene diabaikan** — pengguna memakai tombol aksi.
+
+**Pembatalan aman (anti-race):**
+
+- `stageToken` (penghitung token) **dinaikkan saat keluar mode tahap** (tombol `✕` aksi atau `targetLost`) — bukan saat popup ditutup — sehingga proses load GLB tahap yang belum selesai otomatis batal dan respons lambat tidak menampilkan model yang sudah tidak diminta.
+- Marker hilang (`targetLost`) → `closePopup()` lalu `hideStageModel()` → **membersihkan model tahap dan tombol aksi sekaligus**.
+
+**Fungsi terkait di `public/learn/ar.html`:** `detectStageType()`, `stageEntity()`, `stageBox()`, `stageWrap()`, `STAGE_BUILDERS`, `hideStageModel()`, `activateStageSwap()`, `fitStageGltf()`, `showStageModel(step, meshName)` (**return boolean**), `showStageCTA()`, `hideStageCTA()`, `openDetailFromStage()`.
+
+**Sambungan dengan alur klik:**
+
+```
+handleClick()
+   ├─ if (stageStep) return;                    ← mode tahap aktif: ketukan diabaikan
+   └─ showStageModel(stepsData[name], name)
+         ├─ true  → showStageCTA()              ← model tahap tampil + tombol aksi (popup belum buka)
+         └─ false → openPopup(...)              ← tidak ada model tahap: popup langsung (perilaku lama)
+
+tombol "📋 Lihat Penjelasan" → openDetailFromStage() → openPopup()
+                                (openPopup menyembunyikan tombol aksi)
+closePopup()                 → bila stageStep ada → showStageCTA() lagi
+                                (model tahap TETAP tampil)
+tombol "✕" aksi / targetLost → hideStageModel()   (keluar mode tahap:
+                                bersihkan stageStep + tombol aksi + token)
+```
+
+**Entity:** `<a-entity id="stage-entity" visible="false">` adalah **saudara** `#model-entity` di dalam `#pivot` (bagian scene A-Frame).
+
+**Log debug di console browser:**
+
+```
+[Stage] Muat GLB tahap dari database:
+[Stage] GLB fit — size:
+[Stage] GLB tahap tampil
+[Stage] GLB gagal → fallback:
+[Stage] Model hardcode:
+[Stage] Tanpa model (URL kosong & tipe tak dikenal) → popup langsung
+```
+
+Catatan: kode interaktif pengguna (gesture rotate / pinch / pan) **tidak berubah** oleh fitur ini.
+
+## 5.2 Tombol Aksi (Stage CTA)
+
+Saat mode tahap aktif, pengguna **tidak langsung** membuka popup. Layar menampilkan **tombol aksi** tetap (*fixed*) di posisi `bottom: 126px`:
+
+```
+┌───────────────────────────────────────┐
+│   [ model 3D tahap di atas marker ]   │
+│                                       │
+│                                       │
+│  ┌───────────────────┐   ┌────────┐   │
+│  │📋 Lihat Penjelasan│   │   ✕    │   │
+│  └───────────────────┘   └────────┘   │
+└───────────────────────────────────────┘
+     fixed · bottom 126px · z-index 80
+     animasi masuk: ctaIn
+```
+
+**Elemen & CSS baru di `public/learn/ar.html`:**
+
+- `<div id="stage-cta" class="hidden">` berisi `<button class="stage-cta-detail">📋 Lihat Penjelasan</button>` dan `<button class="stage-cta-close">✕</button>`.
+- CSS baru: `#stage-cta` (fixed, bottom 126px, z-index 80, animasi `ctaIn`), `.stage-cta-detail` (biru `#2563eb`), `.stage-cta-close`.
+
+**Daftar alur langkah (2 langkah — popup tidak auto-buka):**
+
+| No | Aksi pengguna | Hasil |
+| --- | --- | --- |
+| 1 | Klik mesh tahap | Model utama digantikan model 3D tahap + **tombol aksi muncul** (tombol utama **"📋 Lihat Penjelasan"** dan tombol **"✕"**) |
+| 2 | Klik **"📋 Lihat Penjelasan"** | **Barulah** popup detail terbuka (teks materi + kontrol TTS tetap persis seperti sebelumnya) |
+| 3 | Tutup popup (✕ popup / backdrop) | Popup hilang, **model tahap tetap tampil**, tombol aksi muncul lagi |
+| 4 | Klik tombol **"✕"** aksi | Keluar dari mode tahap → model utama tampil kembali |
+| 5 | Fallback: mesh tanpa model tahap (URL kosong & tipe tak dikenal) | Popup terbuka **langsung** tanpa tombol (perilaku lama) |
+| 6 | Ketuk bebas di scene selama mode tahap aktif | Diabaikan (guard `if (stageStep) return;`) — gunakan tombol. Marker hilang (`targetLost`) → membersihkan model tahap **dan** tombol aksi sekaligus |
+| 7 | Mode URL: tombol diklik saat GLB masih loading | Tombol tetap bisa diklik; model tampil begitu selesai dimuat |
+
+**State & fungsi baru:**
+
+- **`stageStep`** — step yang model tahapnya sedang tampil; keberadaannya berarti **mode tahap aktif**.
+- **`stageToken`** — dinaikkan saat **keluar mode tahap**, bukan saat popup ditutup.
+- `showStageCTA()` / `hideStageCTA()` — menampilkan / menyembunyikan tombol aksi.
+- `openDetailFromStage()` — membuka popup detail dari tombol "📋 Lihat Penjelasan".
+- **`showStageModel()` mengembalikan boolean**: `true` = model tahap diproses/tampil → tombol aksi muncul; `false` = tidak ada model tahap → popup langsung terbuka (perilaku lama).
+
+**Perubahan fungsi lama:**
+
+| Fungsi | Perubahan |
+| --- | --- |
+| `openPopup()` | Menyembunyikan tombol aksi |
+| `closePopup()` | **Tidak lagi** menyembunyikan model tahap; justru menampilkan lagi tombol aksi bila `stageStep` ada |
+| `handleClick()` | Guard `if (stageStep) return;` + percabangan `if (showStageModel(...)) showStageCTA(); else openPopup(...)` |
+| `hideStageModel()` | Membersihkan `stageStep` + tombol aksi |
+| `targetLost` | `closePopup()` lalu `hideStageModel()` |
+
+> Detail teks materi dan kontrol TTS **tetap ada** — hanya waktu bukanya yang dipindah ke tombol. Tabel kontrol popup (Dengarkan / Jeda / Berhenti) tidak berubah.
 
 ---
 
@@ -287,7 +447,10 @@ Sistem membaca nama mesh (mesh.name)
       ↓
 Nama dicari di database (stepsData)
       ↓
-Ketemu  → popup materi tampil (+ highlight hijau pada mesh)
+Ketemu  → model 3D tahap menggantikan model utama
+          lalu tombol aksi tampil ("📋 Lihat Penjelasan" + "✕")
+          → popup materi baru terbuka saat tombol "📋 Lihat Penjelasan" diklik
+            (+ highlight hijau pada mesh)
 Tidak ketemu → muncul peringatan "mesh belum ada di data admin"
 ```
 
@@ -335,6 +498,10 @@ Mesh yang tersentuh terdeteksi
 Nama mesh dibaca (mesh.name)
       ↓
 Tahapan dicari di database
+      ↓
+Model 3D tahap menggantikan model utama + tombol aksi tampil
+      ↓
+Tombol "📋 Lihat Penjelasan" diklik
       ↓
 Popup materi terbuka
 ```
@@ -472,7 +639,7 @@ Fitur AR dianggap selesai apabila:
 - Marker berhasil terdeteksi oleh kamera.
 - Model 3D muncul dan menempel pada marker.
 - Seluruh mesh tahapan dapat diklik.
-- Popup materi tampil sesuai mesh yang diklik.
+- Popup materi tampil sesuai mesh yang diklik (pada mode tahap: lewat tombol **📋 Lihat Penjelasan**).
 - Data materi sesuai database.
 - Suara (TTS) dapat diputar dan berhenti dengan benar.
 - Tidak terdapat error TypeScript.

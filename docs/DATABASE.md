@@ -40,6 +40,7 @@ Dokumen ini menjelaskan desain database aplikasi: tabel apa saja yang ada, isi s
 | **Validasi (Zod)** | Pemeriksaan format data yang masuk (wajib diisi atau tidak, tipe datanya benar atau tidak) sebelum data diproses atau disimpan. |
 | **Mesh** | Satu permukaan objek 3D yang diberi nama unik, misalnya `WF_DESIGN`; mesh adalah bagian yang bisa diklik pengguna. |
 | **GLB** | Format berkas model 3D tempat seluruh bentuk dan tekstur dikompres dalam satu file. |
+| **Stage Model (model tahap)** | Model 3D khusus satu tahapan yang menggantikan model utama di atas marker saat tahap itu diklik; alamatnya disimpan di kolom `stage_model_url`. |
 | **Marker** | Gambar cetak yang di-scan lewat kamera; saat marker terdeteksi, model 3D muncul di atasnya. |
 | **MindAR** | Pustaka open source yang mengenali marker (disebut *image tracking*) melalui kamera browser. |
 | **A-Frame** | Pustaka penyusun scene 3D berbasis HTML yang menjadi dasar halaman AR statis `ar.html`. |
@@ -90,13 +91,14 @@ File GLB, marker, dan texture disimpan sebagai file, bukan sebagai data database
 
 - `public/markers/targets.mind` (seluruh marker dalam satu berkas)
 - `public/models/` (cadangan model) + Cloudflare R2 (sumber utama)
+- Model 3D tahap (`stage_model_url`) — file GLB di R2, di database hanya URL-nya
 
 ## Dynamic Content — disimpan di database
 
 - Akun admin
 - Nama metode, slug, deskripsi, status, urutan
 - Lokasi model (`model_path`) dan marker (`marker_path`)
-- Tahapan: judul, deskripsi, isi materi, gambar, audio URL, urutan
+- Tahapan: judul, deskripsi, isi materi, gambar, audio URL, URL model 3D tahap (opsional), urutan
 - Data quiz (persiapan fitur baru)
 
 ## Mesh Mapping
@@ -202,11 +204,14 @@ Menyimpan seluruh tahapan beserta materinya. Kolom `mesh_name` adalah penghubung
 | content | text | Isi materi pembelajaran (teks panjang) |
 | image_url | text | URL gambar pendukung (nullable) |
 | audio_url | text | URL audio narasi (nullable) |
+| stage_model_url | text | URL GLB model 3D tahap (opsional, nullable) |
 | step_order | integer | Urutan tahapan |
 | created_at | integer | Timestamp (ms) |
 | updated_at | integer | Timestamp (ms) |
 
 Catatan: materi dan audio disimpan langsung di tabel ini, sehingga tidak diperlukan tabel terpisah untuk materi atau audio.
+
+Catatan kolom `stage_model_url`: hanya menyimpan **alamat/URL** file GLB model 3D tahap yang disimpan di Cloudflare R2 (`https://models.byvictech.site/models/stages/...`) — file-nya sendiri tidak pernah masuk database. Kolom ini dipakai fitur **Stage Model** (model 3D khusus tahap yang menggantikan model utama saat tahap diklik, lihat `AR_SYSTEM.md`). Jika kolom kosong, halaman AR memakai model tahap bawaan dari kode.
 
 ## 5.6 quizzes
 
@@ -307,6 +312,31 @@ Mengisi data awal:
 npx tsx db/seed.ts
 ```
 
+## Catatan Pemeliharaan Migrasi
+
+**Migrasi terbaru:** `db/migrations/0001_add_stage_model_url.sql` (idx 1 di journal) — menambah kolom `stage_model_url` pada tabel `method_steps`.
+
+**Perbaikan journal (pre-existing):** file `_journal.json` sebelumnya menyebut **2 migrasi yang file-nya tidak pernah ada** di folder `db/migrations/`, yaitu:
+
+- `0001_remove_unused_tables`
+- `0002_add_step_columns_and_drop_category`
+
+Akibatnya `npm run db:migrate` **selalu gagal** karena journal menunjuk berkas yang tidak ditemukan. Kedua entri journal itu sudah dihapus dan diganti dengan migrasi baru `0001_add_stage_model_url`.
+
+**Fakta penting untuk pengembang berikutnya:**
+
+- Di database produksi, **hanya migrasi `0000` yang pernah tercatat diterapkan**.
+- Perubahan tabel lama (drop tabel `categories`, `assets_3d`, `audios`, `learning_materials`; menambah kolom `content`, `image_url`, `mind_target_index`) terjadi **di luar mekanisme migrasi** — kemungkinan lewat `drizzle-kit push` atau perubahan manual.
+- Inkonsistensi antara snapshot schema lama dengan kondisi database ini membuat `drizzle-kit generate` **masih meminta konfirmasi interaktif (butuh TTY)**. Jalankan perintah itu di terminal sungguhan, bukan lewat pipeline yang tidak menyediakan input.
+- Jangan mengembalikan entri journal lama yang file-nya tidak ada; itu akan menggagalkan `npm run db:migrate` lagi.
+
+**Urutan kolom `method_steps` saat ini:**
+
+```
+id → method_id → mesh_name → title → description → step_order
+   → created_at → updated_at → content → image_url → audio_url → stage_model_url
+```
+
 ---
 
 # 9. Default Data (Hasil Seed)
@@ -342,10 +372,10 @@ Disimpan di memori halaman AR (JavaScript)
 Saat pengguna mengklik bagian model:
 
 ```
-Nama mesh diklik  →  dicari di memori  →  popup detail tampil
+Nama mesh diklik  →  dicari di memori  →  model 3D tahap menggantikan model utama  →  tombol aksi tampil  →  popup detail tampil (saat tombol "📋 Lihat Penjelasan" diklik)
 ```
 
-Tidak ada query database tambahan pada setiap klik, sehingga popup tampil seketika.
+Tidak ada query database tambahan pada setiap klik, sehingga popup tampil seketika. Model 3D tahap memakai URL `stage_model_url` yang sudah ikut terbawa dalam respons pertama; jika kosong, halaman AR memakai model tahap bawaan dari kode.
 
 Halaman `/home/mulai-belajar` juga memakai cache server: `unstable_cache` dengan tag `"methods"` dan `revalidate: 3600` detik, yang di-reset oleh `revalidateTag("methods", { expire: 0 })` setiap metode dibuat/diubah/dihapus melalui API.
 
@@ -410,6 +440,7 @@ Aturan validasi penting pada input admin:
 
 - `slug` hanya boleh berisi huruf kecil, angka, dan tanda hubung (`/^[a-z0-9-]+$/`).
 - `meshName` hanya boleh berisi huruf besar, angka, dan garis bawah (`/^[A-Z0-9_]+$/`).
+- `stageModelUrl` bersifat opsional; bila diisi, wajib berformat URL yang benar (Zod: `z.string().url().nullable().optional()`).
 
 **Known issue (diketahui, belum ditangani):** endpoint API methods, steps, dan users saat ini **belum memeriksa status login**; perlindungan utama baru ada pada lapisan halaman admin. Pemeriksaan autentikasi di API menjadi rencana perbaikan.
 
@@ -432,4 +463,4 @@ Aturan validasi penting pada input admin:
 
 Database menggunakan pendekatan **Static Asset + Dynamic Content**.
 
-Model 3D menjadi aset statis yang dihosting di Cloudflare R2, sedangkan database hanya menyimpan informasi pembelajaran: metode, tahapan, materi, audio URL, beserta data akun admin. Hubungan antara objek 3D dan database dilakukan melalui dua kolom kunci, yaitu `mesh_name` dan `mind_target_index`, sehingga interaksi AR dapat berjalan cepat tanpa menyimpan informasi pembelajaran di dalam file `.glb`.
+Model 3D menjadi aset statis yang dihosting di Cloudflare R2, sedangkan database hanya menyimpan informasi pembelajaran: metode, tahapan, materi, audio URL, URL model 3D tahap (`stage_model_url`), beserta data akun admin. Hubungan antara objek 3D dan database dilakukan melalui dua kolom kunci, yaitu `mesh_name` dan `mind_target_index`, sehingga interaksi AR dapat berjalan cepat tanpa menyimpan informasi pembelajaran di dalam file `.glb`.

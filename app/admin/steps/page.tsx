@@ -14,6 +14,7 @@ export default async function StepsPage() {
       content: methodSteps.content,
       imageUrl: methodSteps.imageUrl,
       audioUrl: methodSteps.audioUrl,
+      stageModelUrl: methodSteps.stageModelUrl,
       stepOrder: methodSteps.stepOrder,
       createdAt: methodSteps.createdAt,     
       updatedAt: methodSteps.updatedAt,

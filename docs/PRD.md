@@ -26,6 +26,7 @@ Pembaca non-teknis cukup membaca bagian 1 sampai 9 (gambaran umum, pengguna, alu
 | **MindAR** | Library open-source yang melakukan image tracking di browser; jantung sistem AR aplikasi ini. |
 | **Mesh** | Satu bagian permukaan objek 3D. Setiap tahapan SDLC berupa satu mesh yang bisa diklik terpisah. |
 | **GLB** | Format file model 3D (satu file berisi seluruh objek, tekstur, dan nama mesh). |
+| **Stage Model (model tahap)** | Model 3D khusus satu tahapan yang menggantikan model utama saat tahap itu diklik; sumbernya file GLB dari admin atau model bawaan dari kode. Popup baru terbuka setelah tombol "📋 Lihat Penjelasan" ditekan. |
 | **Raycaster** | Cara komputer menentukan objek 3D mana yang disentuh pengguna, bekerja seperti "sinar tak terlihat" dari titik sentuh layar. |
 | **TTS (Text-to-Speech)** | Fitur browser yang mengubah teks menjadi suara, sehingga materi bisa dibacakan tanpa file audio. |
 | **Cache** | Penyimpanan sementara di browser. File yang sudah pernah diunduh tidak diunduh ulang sehingga lebih cepat. |
@@ -280,6 +281,31 @@ Popup berisi:
 - Isi materi penjelasan
 - Tombol "Dengarkan" (memutar suara TTS) dan tombol berhenti
 - Tombol tutup (✕)
+
+---
+
+## Model 3D Detail Per Tahap (Stage Model) — revisi
+
+Saat pengguna mengklik salah satu tahapan (mesh) pada model AR, **model 3D khusus tahap tersebut menggantikan model utama** di atas marker (pilihan tampilan "ganti di marker"), lalu muncul **tombol aksi** di layar (posisi tetap di bawah): tombol utama **"📋 Lihat Penjelasan"** dan tombol **"✕"**. Popup materi **tidak langsung terbuka** — popup baru terbuka setelah tombol **"📋 Lihat Penjelasan"** ditekan (isi materi dan kontrol TTS tetap persis seperti sebelumnya).
+
+**Alur langkah:**
+
+1. Klik mesh tahap → model utama digantikan model 3D tahap + tombol aksi muncul.
+2. Klik **"📋 Lihat Penjelasan"** → barulah popup detail terbuka (teks materi + kontrol TTS).
+3. Tutup popup (✕ popup / backdrop) → popup hilang, **model tahap tetap tampil**, tombol aksi muncul lagi.
+4. Klik tombol **"✕"** aksi → keluar dari mode tahap → model utama tampil kembali.
+5. Mesh tanpa model tahap → popup terbuka langsung tanpa tombol (perilaku lama).
+6. Selama mode tahap aktif, ketukan bebas di scene diabaikan (pakai tombol); marker hilang → model tahap dan tombol aksi dibersihkan sekaligus.
+
+Model tahap mempunyai **dua sumber**, dengan urutan prioritas sebagai berikut:
+
+1. **GLB dari database** — kolom opsional `stageModelUrl` pada form admin `/admin/steps` (label field: *"Stage Model URL (opsional — GLB 3D tahap di R2)"*). File GLB disimpan di Cloudflare R2 (`https://models.byvictech.site/models/stages/...`); yang tersimpan di database hanyalah URL-nya, sesuai aturan bahwa file aset tidak pernah masuk database. Bila GLB gagal dimuat, sistem turun ke prioritas 2.
+2. **Model hardcode** — model 3D bawaan yang dibangun langsung dari kode (A-Frame primitives), tanpa file: 7 jenis tahap (requirements, design, coding, testing, deployment, maintenance, review) yang dipilih berdasarkan nama mesh.
+3. Bila keduanya tidak ada → **perilaku lama persis**: model utama tetap terlihat dan popup terbuka langsung tanpa tombol aksi.
+
+Model tahap mengikuti gesture pengguna (putar/zoom/geser) dan ukurannya otomatis disesuaikan (auto-fit) ke ukuran standar.
+
+Status: **implementasi awal selesai**.
 
 ---
 

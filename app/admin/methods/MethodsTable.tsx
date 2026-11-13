@@ -502,7 +502,7 @@ export function MethodsTable({ initialData }: { initialData: Method[] }) {
                     if (errors.modelPath)
                       setErrors({ ...errors, modelPath: "" });
                   }}
-                  placeholder="/models/waterfall.glb"
+                  placeholder="https://models.byvictech.site/models/waterfall1.glb"
                   className={errors.modelPath ? "border-destructive" : ""}
                 />
               </FormField>

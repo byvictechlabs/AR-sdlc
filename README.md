@@ -134,9 +134,10 @@ Dengan menempatkan AR experience sebagai **static HTML file** di `public/`:
 │ marker_path     │       │ content         │       │ created_at      │
 │ status          │       │ image_url       │       └─────────────────┘
 │ sort_order      │       │ audio_url       │
-│ mind_target_idx │       │ step_order      │
-│ created_at      │       │ created_at      │
-│ updated_at      │       │ updated_at      │
+│ mind_target_idx │       │ stage_model_url │
+│ created_at      │       │ step_order      │
+│ updated_at      │       │ created_at      │
+│                 │       │ updated_at      │
 └─────────────────┘       └─────────────────┘
 
 ┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐
@@ -157,7 +158,7 @@ Dengan menempatkan AR experience sebagai **static HTML file** di `public/`:
 | Tabel            | Fungsi                                                                                                                                                                                                                      |
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `sdlc_methods` | Metode SDLC (Agile, Waterfall, RAD, dll). Menyimpan info, status (draft/published/archived), path ke model 3D dan marker AR, serta`mindTargetIndex` untuk mapping ke marker di file `.mind`.                            |
-| `method_steps` | Tahapan dalam setiap metode.**`meshName`** adalah kunci yang menghubungkan data penjelasan dengan mesh 3D di file GLB. Ketika user mengetuk mesh, `meshName` di-lookup di tabel ini untuk mendapatkan penjelasan. |
+| `method_steps` | Tahapan dalam setiap metode.**`meshName`** adalah kunci yang menghubungkan data penjelasan dengan mesh 3D di file GLB. Ketika user mengetuk mesh, `meshName` di-lookup di tabel ini untuk mendapatkan penjelasan. Kolom opsional **`stageModelUrl`** menyimpan alamat GLB model 3D tahap (fitur stage model) — file GLB-nya sendiri tetap di R2, bukan di database. |
 | `quizzes`      | Kuis untuk setiap step (opsional, belum diimplementasi di UI).                                                                                                                                                              |
 | `users`        | Admin users. Password di-hash dengan bcryptjs (12 rounds).                                                                                                                                                                  |
 | `sessions`     | Session tokens untuk NextAuth.                                                                                                                                                                                              |
@@ -219,6 +220,8 @@ File GLB (3D Model)              Database (method_steps)
   │         │  5. Model muncul →   │
   │         │     auto-rotate      │
   │         │  6. User ketuk mesh  │
+  │         │     → model tahap    │
+  │         │     → tombol aksi    │
   │         │     → popup detail   │
   │         │     → TTS audio      │
   │         └──────────────────────┘
@@ -237,7 +240,7 @@ File GLB (3D Model)              Database (method_steps)
 
 ### File: `public/learn/ar.html`
 
-File ini adalah **single-file application** (~1277 baris) yang berisi semua logic AR:
+File ini adalah **single-file application** (1671 baris) yang berisi semua logic AR:
 
 #### Komponen Utama
 
@@ -246,6 +249,8 @@ File ini adalah **single-file application** (~1277 baris) yang berisi semua logi
 | **MindAR Scene**         | `<a-scene mindar-image="...">` — inisialisasi AR engine dengan image tracking        |
 | **Target Entity**        | `<a-entity mindar-image-target="targetIndex: N">` — menempelkan model ke marker ke-N |
 | **Model Entity**         | `<a-entity id="model-entity" scale="0.35 0.35 0.35">` — container model 3D           |
+| **Stage Entity**         | `<a-entity id="stage-entity" visible="false">` — model 3D tahap (stage model); menggantikan model utama saat mesh diklik, hilang saat mode tahap selesai |
+| **Stage CTA**            | `<div id="stage-cta">` — tombol aksi **"📋 Lihat Penjelasan"** + **"✕"** (fixed, bottom 126px); popup baru terbuka saat tombol "📋 Lihat Penjelasan" diklik |
 | **Loading Overlay**      | Progress bar saat download model                                                        |
 | **Start Screen**         | Layar "Mulai Kamera" sebelum AR aktif                                                   |
 | **Popup Detail**         | Modal yang muncul saat mesh diklik                                                      |
@@ -287,7 +292,10 @@ resolveMeshName(object)
   → traverse ke parent sampai nemu node yang punya .name
   → return name (e.g. "AG_PLAN")
   → lookup stepsData["AG_PLAN"]
-  → tampilkan popup + TTS
+  → showStageModel(step, name) → boolean
+        true  → model tahap tampil + tombol aksi ("📋 Lihat Penjelasan" + "✕")
+        false → popup terbuka langsung (tanpa model tahap)
+  → klik "📋 Lihat Penjelasan" → popup + TTS
 ```
 
 ---
@@ -450,7 +458,7 @@ sdlc-ar/
 
 | File                                        | Penjelasan                                                                                     |
 | ------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `public/learn/ar.html`                    | **File paling penting.** Semua logic AR ada di sini. ~1277 baris. Edit dengan hati-hati. |
+| `public/learn/ar.html`                    | **File paling penting.** Semua logic AR ada di sini. 1671 baris. Edit dengan hati-hati. |
 | `app/sw.ts`                               | Service worker — caching model 3D.                                                            |
 | `app/api/methods/by-slug/[slug]/route.ts` | API yang dipanggil oleh`ar.html` untuk load data.                                            |
 | `db/seed.ts`                              | Data awal (admin account + methods + steps).                                                   |
@@ -704,7 +712,7 @@ AUTH_URL           = https://ar-sdlc.vercel.app
 >   "modelPath": "https://models.byvictech.site/models/agile-new.glb",
 >   "mindTargetIndex": 1,
 >   "steps": [
->     { "meshName": "AG_PLAN", "title": "Requirement", "description": "...", "content": "..." },
+>     { "meshName": "AG_PLAN", "title": "Requirement", "description": "...", "content": "...", "stageModelUrl": null },
 >     ...
 >   ]
 > }
@@ -725,7 +733,7 @@ AUTH_URL           = https://ar-sdlc.vercel.app
 | Halaman            | Fitur                                                                              |
 | ------------------ | ---------------------------------------------------------------------------------- |
 | `/admin/methods` | CRUD metode SDLC, search, filter status, edit modelPath/markerPath/mindTargetIndex |
-| `/admin/steps`   | CRUD tahapan, search, filter by method, edit meshName/title/description/content    |
+| `/admin/steps`   | CRUD tahapan, search, filter by method, edit meshName/title/description/content/**stageModelUrl** (field *"Stage Model URL (opsional — GLB 3D tahap di R2)"*) |
 | `/admin/users`   | CRUD users, assign roles (admin/super_admin)                                       |
 
 ### Edit Dialog

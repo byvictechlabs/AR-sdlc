@@ -14,6 +14,9 @@ export const methodSteps = sqliteTable("method_steps", {
   content: text("content"),
   imageUrl: text("image_url"),
   audioUrl: text("audio_url"),
+  // URL GLB model 3D detail per tahap (opsional). File = di R2, isi kolom ini
+  // dengan URL publiknya. Kalau NULL → pakai model hardcode bawaan ar.html.
+  stageModelUrl: text("stage_model_url"),
   stepOrder: integer("step_order").notNull().default(0),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()

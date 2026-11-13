@@ -24,6 +24,7 @@ export const stepSchema = z.object({
   content: z.string().optional(),
   imageUrl: z.string().url().nullable().optional(),
   audioUrl: z.string().url().nullable().optional(),
+  stageModelUrl: z.string().url().nullable().optional(),
   stepOrder: z.number().int().min(1).default(1),
 });
 

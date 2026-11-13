@@ -48,6 +48,7 @@ interface Step {
   content: string | null;
   imageUrl: string | null;
   audioUrl: string | null;
+  stageModelUrl: string | null;
   stepOrder: number;
   createdAt: Date;
   updatedAt: Date;
@@ -93,6 +94,7 @@ export function StepsTable({
     content: "",
     imageUrl: "",
     audioUrl: "",
+    stageModelUrl: "",
     stepOrder: 1,
   });
 
@@ -131,6 +133,7 @@ export function StepsTable({
       content: "",
       imageUrl: "",
       audioUrl: "",
+      stageModelUrl: "",
       stepOrder: 1,
     });
     setErrors({});
@@ -147,6 +150,7 @@ export function StepsTable({
       content: step.content || "",
       imageUrl: step.imageUrl || "",
       audioUrl: step.audioUrl || "",
+      stageModelUrl: step.stageModelUrl || "",
       stepOrder: step.stepOrder,
     });
     setErrors({});
@@ -183,6 +187,7 @@ export function StepsTable({
           content: form.content.trim() || null,
           imageUrl: form.imageUrl.trim() || null,
           audioUrl: form.audioUrl.trim() || null,
+          stageModelUrl: form.stageModelUrl.trim() || null,
           stepOrder: Number(form.stepOrder),
         }),
       });
@@ -546,6 +551,19 @@ export function StepsTable({
                 />
               </FormField>
             </div>
+            <FormField
+              label="Stage Model URL (opsional — GLB 3D tahap di R2)"
+              htmlFor="stageModelUrl"
+            >
+              <Input
+                id="stageModelUrl"
+                value={form.stageModelUrl}
+                onChange={(e) =>
+                  setForm({ ...form, stageModelUrl: e.target.value })
+                }
+                placeholder="https://models.byvictech.site/models/stages/design.glb"
+              />
+            </FormField>
             <FormField label="Step Order" htmlFor="stepOrder">
               <Input
                 id="stepOrder"

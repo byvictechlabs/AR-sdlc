@@ -44,6 +44,7 @@ per-file) ditujukan untuk yang akan membaca atau mengubah kode.
 | **Static HTML (`ar.html`)** | Halaman HTML biasa di luar React — dipakai untuk pengalaman AR agar tidak bentrok dengan A-Frame. |
 | **Mesh** | Satu potongan objek 3D = satu tahapan SDLC. |
 | **GLB** | Format file model 3D. |
+| **Stage model** | Model 3D khusus satu tahap yang menggantikan model utama saat tahap diklik; sumbernya kolom `stageModelUrl` atau model hardcode di `ar.html`. |
 | **Marker / MindAR / A-Frame** | Lihat glosarium di [`AR_SYSTEM.md`](./AR_SYSTEM.md). |
 
 ---
@@ -271,10 +272,20 @@ Page load
   │           └─ model-loaded event → sembunyikan overlay
   │
   └─ interaksi
-        ├─ tap  → handleClick() → findStageNameAt() [raycaster + bounding sphere]
+        ├─ tap  → handleClick() → if (stageStep) return   [mode tahap: tap diabaikan]
+        │           → findStageNameAt() [raycaster + bounding sphere]
         │           → resolveMeshName() (walk parent, prefer nama yang cocok DB)
-        │           → stepsData[name]? → highlightStage() + popup + feedback
+        │           → stepsData[name]? → showStageModel(step, name) → boolean
+        │                 true  → model tahap tampil (GLB stageModelUrl → STAGE_BUILDERS)
+        │                         + showStageCTA()  [tombol "📋 Lihat Penjelasan" + "✕"]
+        │                 false → openPopup() langsung [tanpa model tahap, perilaku lama]
         │                              : → toast "mesh belum ada di data admin"
+        │           → highlight hijau + feedback
+        ├─ tombol "📋 Lihat Penjelasan" → openDetailFromStage() → openPopup()
+        │        (openPopup menyembunyikan tombol aksi)
+        ├─ tutup popup (✕/backdrop) → showStageCTA() lagi (model tahap tetap tampil)
+        ├─ tombol "✕" aksi / targetLost → hideStageModel()
+        │        (keluar mode tahap: bersihkan stageStep + tombol aksi + stageToken)
         ├─ drag → rotasi sumbu Y saja (dy sengaja diabaikan)
         └─ pinch→ scale 0.08–3.0 (default 0.35)
 ```
@@ -356,7 +367,7 @@ sdlc-ar/
 ├── middleware.ts                   🔒 jaga /admin/* via lib/auth
 │
 ├── public/                         ─ aset yang di-serve apa adanya
-│   ├── learn/ar.html               ⭐⭐ AR ENGINE (file terpenting, ~1277 baris)
+│   ├── learn/ar.html               ⭐⭐ AR ENGINE (file terpenting, 1671 baris; stage model + tombol aksi)
 │   ├── markers/targets.mind        ⭐ compiled MindAR target (SEMUA marker)
 │   ├── markers/targets3.mind       🗑 backup compile lama
 │   ├── models/agile-2.glb          backup model lokal
@@ -427,8 +438,8 @@ sdlc-ar/
 | `app/admin/login/page.tsx`           | Form login →`signIn("credentials", {redirect:false})` → `/admin`.                                                                                                                                    | `POST /api/auth/[...nextauth]`                            |
 | `app/admin/methods/page.tsx`         | Server: query semua methods (urut sortOrder) →`MethodsTable`.                                                                                                                                           | Query`@/db`                                               |
 | `app/admin/methods/MethodsTable.tsx` | CRUD methods: create/edit/delete, search, filter status. Field: name, slug, description, modelPath, markerPath, status, sortOrder,**mindTargetIndex**. Dialog edit `max-h-[70vh] overflow-y-auto`. | `GET/POST /api/methods`, `PUT/DELETE /api/methods/[id]` |
-| `app/admin/steps/page.tsx`           | Server: query steps (join methods) + list methods.                                                                                                                                                         | Query`@/db`                                               |
-| `app/admin/steps/StepsTable.tsx`     | CRUD steps: field methodId,**meshName** (di-uppercase otomatis), title, description, content, imageUrl, audioUrl, stepOrder. Validasi regex `^[A-Z0-9_]+$`.                                        | `GET/POST /api/steps`, `PUT/DELETE /api/steps/[id]`     |
+| `app/admin/steps/page.tsx`           | Server: query steps (join methods, select ikut kolom baru **stageModelUrl**) + list methods.                                                                                                                                                         | Query`@/db`                                               |
+| `app/admin/steps/StepsTable.tsx`     | CRUD steps: field methodId,**meshName** (di-uppercase otomatis), title, description, content, imageUrl, audioUrl, **stageModelUrl** (FormField *"Stage Model URL (opsional — GLB 3D tahap di R2)"*, placeholder `https://models.byvictech.site/models/stages/design.glb`), stepOrder. Validasi regex `^[A-Z0-9_]+$`.                                        | `GET/POST /api/steps`, `PUT/DELETE /api/steps/[id]`     |
 | `app/admin/users/page.tsx`           | Server: daftar user.                                                                                                                                                                                       | Query`@/db`                                               |
 | `app/admin/users/UsersTable.tsx`     | Create + delete user (tanpa edit).                                                                                                                                                                         | `POST /api/users`, `DELETE /api/users/[id]`             |
 
@@ -442,8 +453,8 @@ Semua error dilempar ke **`lib/api-error.ts`** (Zod→400, UNIQUE→409, FK→40
 | `api/dashboard/stats`                     | GET                      | Hitung rows methods/steps/users.                                                                                   | Tanpa auth check (aman via middleware di halaman).        |
 | `api/methods`                             | GET, POST                | List / create method (validasi`methodSchema`).                                                                   | POST →`revalidateTag("methods",{expire:0})` 🌐         |
 | `api/methods/[id]`                        | GET, PUT, DELETE         | CRUD per id.                                                                                                       | PUT/DELETE →`revalidateTag` 🌐                         |
-| **`api/methods/by-slug/[slug]`** ⭐ | GET                      | **Dipakai `ar.html`.** Method by slug + steps, fallback `mindTargetIndex` (waterfall:0, agile:1, rad:2). | 🌐 tanpa cache, by design.                                |
-| `api/steps`, `api/steps/[id]`           | GET/POST, GET/PUT/DELETE | CRUD steps (validasi`stepSchema`).                                                                               | **Tanpa revalidateTag** — konten step selalu live. |
+| **`api/methods/by-slug/[slug]`** ⭐ | GET                      | **Dipakai `ar.html`.** Method by slug + steps (semua kolom, termasuk `stageModelUrl`), fallback `mindTargetIndex` (waterfall:0, agile:1, rad:2). | 🌐 tanpa cache, by design.                                |
+| `api/steps`, `api/steps/[id]`           | GET/POST, GET/PUT/DELETE | CRUD steps (validasi`stepSchema`; GET/POST/PUT otomatis ikut menangani **stageModelUrl**).                                                                               | **Tanpa revalidateTag** — konten step selalu live. |
 | `api/users`, `api/users/[id]`           | GET/POST, DELETE         | CRUD user (bcrypt cost 12, password ≥6).                                                                          | ⚠️ Tanpa auth check.                                    |
 
 ### 5.3 components/ — Komponen React
@@ -468,12 +479,12 @@ Semua error dilempar ke **`lib/api-error.ts`** (Zod→400, UNIQUE→409, FK→40
 | `db/migrate.ts`            | Script: jalankan migration Drizzle ke Turso. Client sendiri (bukan`db/index.ts`).                                                                                                             | `npm run db:migrate`                              |
 | `db/seed.ts`               | Data awal: super admin (`admin@sdlc-ar.com`/`admin123`), 3 methods (Waterfall/Agile/RAD), 16 steps dengan konten Indonesia + meshName `WF_*`/`AG_*`/`RAD_*`. `onConflictDoNothing`. | `npm run db:seed`                                 |
 | `db/schema/methods.ts`     | Tabel`sdlc_methods`: id, name, slug(uq), description, **modelPath**, markerPath, status, sortOrder, **mindTargetIndex**, timestamps.                                              | Dipakai semua query methods.                        |
-| `db/schema/steps.ts`       | Tabel`method_steps`: FK methodId (cascade), **meshName (uq)** ← kunci ke mesh GLB, title, description, content, imageUrl, audioUrl, stepOrder.                                         | Dipakai query steps & ar.html.                      |
+| `db/schema/steps.ts`       | Tabel`method_steps`: FK methodId (cascade), **meshName (uq)** ← kunci ke mesh GLB, title, description, content, imageUrl, audioUrl, **stageModelUrl** (URL GLB model 3D tahap, opsional), stepOrder.                                         | Dipakai query steps & ar.html.                      |
 | `db/schema/auth.ts`        | Tabel`users` (role admin/super_admin), `sessions`, `accounts`.                                                                                                                            | Dipakai`lib/auth.ts`.                             |
 | `db/schema/quizzes.ts`     | Tabel`quizzes` (FK stepId cascade). **Belum dipakai UI** — fitur masa depan.                                                                                                           | —                                                  |
 | `db/schema/relations.ts`   | Relasi Drizzle: method↔steps 1-many, step↔quizzes, user↔sessions/accounts.                                                                                                                   | Di-export`schema/index.ts`.                       |
 | `db/schema/index.ts`       | Barrel export semua tabel + relasi.                                                                                                                                                             | Diimpor sebagai`@/db/schema`.                     |
-| `db/migrations/`           | SQL hasil`drizzle-kit generate` (`0000_heavy_skaar.sql` + meta).                                                                                                                            | Dijalankan`db/migrate.ts`.                        |
+| `db/migrations/`           | SQL hasil`drizzle-kit generate` (`0000_heavy_skaar.sql`, `0001_add_stage_model_url.sql` + meta). Catatan perbaikan journal ada di `DATABASE.md` bagian *Catatan Pemeliharaan Migrasi*. | Dijalankan`db/migrate.ts`.                        |
 
 ### 5.5 lib/, schemas/, stores/, types/, ar/ — Library
 
@@ -482,7 +493,7 @@ Semua error dilempar ke **`lib/api-error.ts`** (Zod→400, UNIQUE→409, FK→40
 | **`lib/auth.ts`** ⭐      | NextAuth v5: provider Credentials (bcryptjs.compare vs`users.passwordHash`), session JWT, salin `role` ke token/session. Export: `handlers, signIn, signOut, auth`. | Di-impor:`middleware.ts`, `api/auth/[...nextauth]`, `app/admin/layout.tsx`. |
 | **`lib/api-error.ts`** ⭐ | `handleApiError(error, context)` → JSON NextResponse: ZodError→400(+details), UNIQUE→409, FK→400, NOT NULL→400, else→500.                                         | Di-impor**semua** route API methods/steps/users.                            |
 | `lib/utils.ts`                  | `cn()` = clsx + tailwind-merge.                                                                                                                                         | `components/ui/*`, `components/admin/*`.                                      |
-| **`schemas/index.ts`** ⭐ | Zod:`methodSchema` (slug lowercase, status enum, mindTargetIndex), `stepSchema` (**meshName wajib `^[A-Z0-9_]+$`**), `loginSchema` 🗑, `quizSchema` 🗑.   | Di-impor API methods & steps.                                                     |
+| **`schemas/index.ts`** ⭐ | Zod:`methodSchema` (slug lowercase, status enum, mindTargetIndex), `stepSchema` (**meshName wajib `^[A-Z0-9_]+$`**, `stageModelUrl` opsional + format URL), `loginSchema` 🗑, `quizSchema` 🗑.   | Di-impor API methods & steps.                                                     |
 | `stores/ar-store.ts` 🗑         | Zustand: isTracking, isModelLoaded, selectedStep, isSpeaking + tipe`Step`/`Method`.                                                                                   | Hanya`components/ar/*` & `ScanPage` (semua mati).                             |
 | `types/next-auth.d.ts`          | Augmentasi tipe:`User.role`, `Session.user.id/role`, `JWT.role`.                                                                                                    | Otomatis dipakai TS di auth code.                                                 |
 | `ar/utils/tts.ts` 🗑            | Wrapper Web Speech API (speak/pause/resume/stop, lang id-ID).                                                                                                             | Hanya`components/ar/StepPopup.tsx`.                                             |
@@ -491,7 +502,7 @@ Semua error dilempar ke **`lib/api-error.ts`** (Zod→400, UNIQUE→409, FK→40
 
 | File                                         | Fungsi                                                                                                                                                                                                                                                                                                                                                                                                 | Hubungan                                                                                                                                  |
 | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| **`public/learn/ar.html`** ⭐⭐      | **AR ENGINE — file terpenting proyek (~1277 baris).** Berisi: start screen, MindAR scene (`mindar-image` + `imageTargetSrc:/markers/targets.mind`), `loadFromDB()`, `applyTargetIndex()` (patch anchor MindAR), gesture (rotate Y / pinch zoom / tap 8px), raycaster + bounding-sphere klik mesh, popup detail + TTS, debug overlay, progress download model, `cleanSlug` safety net. | Dibuka via`MethodCard` & `app/learn/[slug]`. Fetch `/api/methods/by-slug/`. Baca cache `ar-models-v1`. Register `public/sw.js`. |
+| **`public/learn/ar.html`** ⭐⭐      | **AR ENGINE — file terpenting proyek (1671 baris), termasuk stage model per tahap + tombol aksi (hardcode `STAGE_BUILDERS` + jalur `stageModelUrl`).** Berisi: start screen, MindAR scene (`mindar-image` + `imageTargetSrc:/markers/targets.mind`), `loadFromDB()`, `applyTargetIndex()` (patch anchor MindAR), gesture (rotate Y / pinch zoom / tap 8px), raycaster + bounding-sphere klik mesh, popup detail + TTS, entity `#stage-entity` (model 3D tahap, saudara `#model-entity` dalam `#pivot`), elemen `<div id="stage-cta">` (tombol "📋 Lihat Penjelasan" + "✕", fixed bottom 126px), fungsi `detectStageType()` / `showStageModel()` (return boolean) / `hideStageModel()` / `showStageCTA()` / `hideStageCTA()` / `openDetailFromStage()` / `fitStageGltf()`, state `stageStep` + `stageToken`, debug overlay, progress download model, `cleanSlug` safety net. | Dibuka via`MethodCard` & `app/learn/[slug]`. Fetch `/api/methods/by-slug/`. Baca cache `ar-models-v1`. Register `public/sw.js`. |
 | **`public/markers/targets.mind`** ⭐ | Compiled MindAR target — berisi SEMUA marker dalam 1 file.**Urutan upload di compiler = `mindTargetIndex` di DB** (waterfall 0, agile 1, rad 2).                                                                                                                                                                                                                                              | Dirujuk`ar.html` (`imageTargetSrc`) & `ModelPreloader` (prefetch).                                                                  |
 | `public/markers/targets3.mind` 🗑          | Compile lama/backup — tak direferensikan.                                                                                                                                                                                                                                                                                                                                                             | —                                                                                                                                        |
 | `public/models/agile-2.glb`                | Backup model lokal (Draco+WebP). Model produksi di R2.                                                                                                                                                                                                                                                                                                                                                 | Tak direferensikan kode.                                                                                                                  |
@@ -508,7 +519,7 @@ Semua error dilempar ke **`lib/api-error.ts`** (Zod→400, UNIQUE→409, FK→40
 | `docs/ARCHITECTURE.md`           | Arsitektur 20 bagian: layer, static-asset+dynamic-content, mesh mapping, alur-alur, keputusan arsitektur. |
 | `docs/DATABASE.md`               | ERD, definisi tabel, relasi, migration/seed, endpoint, mapping mesh.                                      |
 | `docs/CODING_GUIDELINES.md`      | 26 bagian standar kode (TypeScript, React, DB, API, AR, penamaan mesh, DoD).                              |
-| `docs/AR_SYSTEM.md`              | Detail sistem AR: workflow, marker tracking, raycaster, aturan Blender/export, audio/TTS.                 |
+| `docs/AR_SYSTEM.md`              | Detail sistem AR: workflow, marker tracking, stage model, raycaster, aturan Blender/export, audio/TTS.  |
 | `docs/ROADMAP.md`                | 9 fase pengembangan + milestone.                                                                          |
 | `docs/UI_UX.md`                  | Pedoman desain: warna, tipografi, layout, komponen.                                                       |
 | **`docs/CODEBASE_MAP.md`** | **Dokumen ini** — peta file, alur, hubungan.                                                       |
@@ -548,7 +559,7 @@ JEMBATAN 1: meshName  (Database ↔ Model 3D)
 ═══════════════════════════════════════════════════════════
    GLB mesh name  ────────────  method_steps.mesh_name
    "AG_PLAN"      ──sama──►    "AG_PLAN"
-   Klik mesh di ar.html → stepsData["AG_PLAN"] → popup
+   Klik mesh di ar.html → stepsData["AG_PLAN"] → model tahap + tombol aksi → popup
    ⚠️ Kalau beda → klik ga muncul apa-apa. Fix: admin /admin/steps.
 
 JEMBATAN 2: mindTargetIndex  (Database ↔ File .mind)
@@ -589,7 +600,7 @@ JEMBATAN 2: mindTargetIndex  (Database ↔ File .mind)
 7. **Ganti model 3D = WAJIB ganti URL** (`agile.glb` → `agile-v2.glb`) supaya cache bust. URL sama = file lama terus.
 8. **Recompile `targets.mind` = cocokkan ulang `mindTargetIndex`** di `/admin/methods`.
 9. **`.env.example` tidak sinkron** dengan nama variabel yang dibaca kode (`TURSO_DATABASE_URL`/`TURSO_AUTH_TOKEN`).
-10. **Log debugging di ar.html**: `[INIT]`, `[DB]`, `[AR]`, `[LoadCache]`, `[Model]`, `[Click]`, `[Highlight]` — aktifkan console browser saat tes.
+10. **Log debugging di ar.html**: `[INIT]`, `[DB]`, `[AR]`, `[LoadCache]`, `[Model]`, `[Stage]`, `[Click]`, `[Highlight]` — aktifkan console browser saat tes. Contoh log stage: `[Stage] Tanpa model (URL kosong & tipe tak dikenal) → popup langsung`.
 
 ---
 

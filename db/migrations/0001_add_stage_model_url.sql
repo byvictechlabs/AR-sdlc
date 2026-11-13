@@ -1,0 +1,1 @@
+ALTER TABLE `method_steps` ADD COLUMN `stage_model_url` text;

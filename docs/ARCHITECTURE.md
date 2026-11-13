@@ -36,6 +36,7 @@ Dokumen ini menjelaskan bagaimana aplikasi media pembelajaran Augmented Reality 
 | **Validasi (Zod)** | Pemeriksaan format data yang masuk (wajib diisi atau tidak, tipe datanya benar atau tidak) sebelum data diproses atau disimpan. |
 | **Mesh** | Satu permukaan objek 3D yang diberi nama unik, misalnya `WF_DESIGN`; mesh adalah bagian yang bisa diklik pengguna. |
 | **GLB** | Format berkas model 3D tempat seluruh bentuk dan tekstur dikompres dalam satu file. |
+| **Stage Model (model tahap)** | Model 3D khusus satu tahapan yang menggantikan model utama di atas marker saat tahap diklik. Sumbernya: GLB dari kolom `stage_model_url`, atau model bawaan dari kode bila tidak ada. Popup baru terbuka setelah tombol **"📋 Lihat Penjelasan"** ditekan. |
 | **Marker** | Gambar cetak yang di-scan lewat kamera; saat marker terdeteksi, model 3D muncul di atasnya. |
 | **MindAR** | Pustaka open source yang mengenali marker (disebut *image tracking*) melalui kamera browser. |
 | **A-Frame** | Pustaka penyusun scene 3D berbasis HTML yang menjadi dasar halaman AR statis `ar.html`. |
@@ -76,7 +77,7 @@ Agar tidak terjadi salah paham, berikut status bagian-bagian sistem saat ini:
 
 | Bagian kode | Fungsi | Status |
 | --- | --- | --- |
-| `public/learn/ar.html` (±1277 baris) | Halaman AR aktif: A-Frame 1.6.0 + MindAR 1.2.5 via CDN, Three.js via `AFRAME.THREE` | **Aktif (produksi)** |
+| `public/learn/ar.html` (±1671 baris) | Halaman AR aktif: A-Frame 1.6.0 + MindAR 1.2.5 via CDN, Three.js via `AFRAME.THREE` | **Aktif (produksi)** |
 | `app/api/*`, `app/admin/*`, `app/home/*` | API, dashboard admin, halaman publik | **Aktif (produksi)** |
 | `public/markers/targets.mind` | Seluruh marker dikompilasi menjadi satu berkas | **Aktif (produksi)** |
 | `components/ar/*` (ARViewer, StepPopup), `ar/`, `stores/ar-store.ts` | Komponen AR berbasis React | Tidak aktif (kode mati/sisa) |
@@ -156,7 +157,7 @@ Berfungsi sebagai wajah aplikasi bagi pengguna.
 
 ## Business Layer (Logika)
 
-Mengatur alur kerja aplikasi, antara lain: scan marker, memuat model, klik mesh, mengambil materi, dan memutar audio.
+Mengatur alur kerja aplikasi, antara lain: scan marker, memuat model, klik mesh, menukar model utama dengan model 3D tahap, mengambil materi, dan memutar audio.
 
 ## Data Layer (Akses Data)
 
@@ -182,7 +183,10 @@ Penghubung aplikasi dengan database, menggunakan Drizzle ORM di dalam Route Hand
 7. Saat marker terdeteksi, model GLB dimuat dan muncul mengikuti posisi marker.
 8. Pengguna menekan salah satu bagian model; raycaster menentukan mesh yang tersentuh.
 9. Nama mesh (`meshName`) dicocokkan dengan data tahapan yang sudah dimuat sebelumnya.
-10. Popup detail muncul, lalu audio diputar (MP3 atau teks-ke-suara).
+10. **Model 3D tahap menggantikan model utama** di atas marker (bila tersedia; kalau tidak, model utama tetap tampil dan popup terbuka langsung).
+11. **Tombol aksi muncul** di layar: **"📋 Lihat Penjelasan"** dan **"✕"** — popup belum terbuka.
+12. Tombol "📋 Lihat Penjelasan" diklik → **popup detail terbuka**, lalu audio diputar (MP3 atau teks-ke-suara).
+13. Popup ditutup → popup hilang, **model tahap tetap tampil** dan tombol aksi muncul lagi; tombol "✕" aksi → kembali ke model utama.
 
 ---
 
@@ -205,7 +209,19 @@ Raycaster menentukan mesh yang tersentuh
       ↓
 meshName dibaca → dicocokkan dengan data tahapan
       ↓
+Model 3D tahap menggantikan model utama
+(GLB dari stage_model_url, atau model hardcode; bila tidak ada → model utama tetap tampil)
+      ↓
+Tombol aksi tampil: "📋 Lihat Penjelasan" + "✕"
+(popup belum terbuka)
+      ↓
+Tombol "📋 Lihat Penjelasan" diklik
+      ↓
 Popup detail → pemutar audio / teks-ke-suara
+      ↓
+Popup ditutup → model tahap tetap tampil, tombol aksi muncul lagi
+      ↓
+Tombol "✕" aksi → model utama tampil lagi
 ```
 
 Penting:
@@ -244,6 +260,7 @@ Model 3D **tidak pernah disimpan di database**.
 | Aset | Lokasi utama | Keterangan |
 | --- | --- | --- |
 | Model GLB | Cloudflare R2: `https://models.byvictech.site/models/*.glb` | Diambil dari cloud, menyesuaikan kolom `model_path` |
+| Model GLB tahap (stage model) | Cloudflare R2: `https://models.byvictech.site/models/stages/*.glb` | Opsional; URL-nya disimpan di kolom `stage_model_url` tabel `method_steps`. Jika kosong/gagal dimuat, halaman AR memakai model tahap bawaan dari kode (tanpa file) |
 | Cadangan model GLB | `public/models/` | Salinan cadangan, bukan sumber utama |
 | Marker (berkas gabungan) | `public/markers/targets.mind` | Seluruh gambar marker dikompilasi menjadi **satu** berkas `.mind` |
 | Gambar marker sumber | `public/markers/*.png` | Berkas sumber sebelum dikompilasi |
@@ -324,7 +341,7 @@ Disimpan di memori halaman AR (JavaScript)
 Saat pengguna memilih salah satu tahapan:
 
 ```
-Nama mesh diklik  →  dicari di memori  →  popup muncul
+Nama mesh diklik  →  dicari di memori  →  model 3D tahap menggantikan model utama  →  tombol aksi tampil  →  popup muncul (saat tombol "📋 Lihat Penjelasan" diklik)
 ```
 
 Tidak ada permintaan ulang ke server. Keuntungannya:
@@ -355,10 +372,13 @@ ar.html
 ├── Scene A-Frame
 │   ├── Kamera
 │   ├── Entity MindAR (mindar-image, target: targets.mind)
-│   ├── Entity target + model GLB
+│   ├── Entity target + pivot
+│   │   ├── #model-entity   → model GLB utama
+│   │   └── #stage-entity   → model 3D tahap (stage model, saudara #model-entity)
 │   ├── Pencahayaan
 │   └── Raycaster (deteksi klik pada mesh)
 ├── Popup detail tahapan
+├── Tombol aksi stage (`#stage-cta`: "📋 Lihat Penjelasan" + "✕")
 └── Pemutar audio / teks-ke-suara
 ```
 
