@@ -476,6 +476,7 @@ Bagian ini menjelaskan gaya visual halaman yang dilihat pengguna belajar (bukan 
 - Layar awal: gradien `#2563EB → #4F46E5`, judul putih, tombol putih teks biru "Mulai Kamera"
 - Overlay status berupa pill gelap transparan di atas
 - Popup materi: lembar putih dari bawah, judul tebal gelap, teks abu sedang, tombol "Dengarkan" biru dan tombol tutup ✕
+- Tombol aksi model tahap (`#stage-cta`, fixed bottom 126px): tombol utama biru `#2563EB` "📋 Lihat Penjelasan" + tombol ✕ gelap transparan 44×44; muncul dengan animasi naik saat model 3D tahap tampil, hilang saat popup terbuka
 - Indikator: hijau = marker terdeteksi/sukses, oranye = peringatan, merah `#DC2626` = error
 
 Aturan yang berlaku tetap sama: flat modern, shadow kecil, tanpa dekorasi berlebihan.

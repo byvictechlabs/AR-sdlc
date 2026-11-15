@@ -246,6 +246,15 @@ Find matching learning content
 
 ↓
 
+Show Stage 3D Model + Action Button
+("📋 Lihat Penjelasan" / "✕")
+
+↓
+
+User Clicks "📋 Lihat Penjelasan"
+
+↓
+
 Show Detail Modal
 
 ↓

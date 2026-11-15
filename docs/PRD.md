@@ -177,6 +177,11 @@ Model 3D muncul di atas marker
         ↓
 User memilih salah satu tahapan (mesh) pada model
         ↓
+Model 3D khusus tahap tersebut tampil
+(menggantikan model utama) + tombol aksi muncul
+        ↓
+User menekan tombol "📋 Lihat Penjelasan"
+        ↓
 Popup materi tampil
         ↓
 User membaca materi dan menekan "Dengarkan" (suara TTS)

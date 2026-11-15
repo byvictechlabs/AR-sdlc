@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   ArrowLeft,
+  Box,
   Scan,
   MousePointerClick,
   Camera,
@@ -118,20 +119,21 @@ export default function PanduanPage() {
                 4
               </div>
               <h3 className="text-sm font-semibold text-foreground">
-                Interaksi dengan Model 3D
+                Ketuk Tahapan → Model 3D Tahapannya
               </h3>
             </div>
             <div className="ml-11 space-y-2">
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Setelah model muncul, ketuk atau klik pada tahapan yang ingin
-                dipelajari. Setiap tahapan pada model merupakan objek yang dapat
-                diklik.
+                Ketuk salah satu tahapan pada model (misalnya Testing).
+                Model utama akan digantikan oleh model 3D khusus tahapan
+                tersebut — setiap tahapan punya diorama 3D-nya sendiri.
               </p>
               <div className="flex items-start gap-2 rounded-lg bg-slate-50 p-3">
-                <MousePointerClick className="h-4 w-4 shrink-0 text-slate-500 mt-0.5" />
+                <Box className="h-4 w-4 shrink-0 text-slate-500 mt-0.5" />
                 <p className="text-[11px] text-slate-600 leading-relaxed">
-                  Ketuk bagian model yang memiliki warna berbeda atau label
-                  untuk melihat detail tahapan.
+                  Model tahap masih bisa diputar, digeser, dan di-zoom
+                  seperti model utama. Tombol aksi akan muncul di bawah
+                  layar.
                 </p>
               </div>
             </div>
@@ -147,10 +149,37 @@ export default function PanduanPage() {
                 Baca Materi & Dengarkan Audio
               </h3>
             </div>
+            <div className="ml-11 space-y-2">
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Tekan tombol <b>“📋 Lihat Penjelasan”</b> di bawah layar
+                untuk membuka popup penjelasan tahapan tersebut. Baca materi
+                pembelajaran dan tekan “Dengarkan” untuk memutar audio TTS.
+              </p>
+              <div className="flex items-start gap-2 rounded-lg bg-slate-50 p-3">
+                <MousePointerClick className="h-4 w-4 shrink-0 text-slate-500 mt-0.5" />
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  Tutup popup (✕) → model 3D tahapan tetap tampil, jadi kamu
+                  bisa memutar modelnya lagi atau membuka penjelasan kembali.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Step 6 */}
+          <div className="rounded-xl border border-border/60 bg-white p-4 shadow-sm">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-500 text-xs font-bold text-white">
+                6
+              </div>
+              <h3 className="text-sm font-semibold text-foreground">
+                Kembali & Jelajahi Tahap Lain
+              </h3>
+            </div>
             <p className="text-xs text-muted-foreground leading-relaxed ml-11">
-              Popup detail akan muncul berisi penjelasan tahapan tersebut.
-              Baca materi pembelajaran dan putar audio jika tersedia untuk
-              pengalaman belajar yang lebih lengkap.
+              Tekan tombol <b>✕</b> di samping tombol penjelasan untuk
+              kembali ke model utama. Dari sana, ketuk tahapan lain untuk
+              melihat model 3D-nya — setiap tahapan bisa dibuka bergantian
+              selama marker masih terdeteksi.
             </p>
           </div>
         </div>

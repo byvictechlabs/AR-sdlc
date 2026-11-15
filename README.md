@@ -240,7 +240,7 @@ File GLB (3D Model)              Database (method_steps)
 
 ### File: `public/learn/ar.html`
 
-File ini adalah **inti aplikasi AR** (1328 baris) yang berisi sebagian besar logic AR. Logika model 3D tahap (stage model) dipisah ke file pendukung **`public/learn/stage-models.js`** (371 baris) yang dimuat sebelum script inline ar.html.
+File ini adalah **inti aplikasi AR** (1335 baris) yang berisi sebagian besar logic AR. Logika model 3D tahap (stage model) dipecah jadi dua file pendukung: **`public/learn/stage-models.js`** (191 baris, hub + registry) dan **`public/learn/stages/*.js`** (7 file, isi model per jenis tahap). Kedelapan file itu dimuat lewat `<script>` berurutan (baris 348–355) sebelum script inline ar.html.
 
 #### Komponen Utama
 
@@ -424,8 +424,16 @@ sdlc-ar/
 │
 ├── public/
 │   ├── learn/
-│   │   ├── ar.html               # ⭐ AR experience (static HTML, 1328 baris)
-│   │   └── stage-models.js       # model 3D tahap + tombol aksi (371 baris)
+│   │   ├── ar.html               # ⭐ AR experience (static HTML, 1335 baris)
+│   │   ├── stage-models.js       # hub model 3D tahap + tombol aksi (191 baris)
+│   │   └── stages/               # 7 model tahap per jenis (33–417 baris)
+│   │       ├── requirements.js   # papan klip dokumen (33)
+│   │       ├── design.js         # blueprint meja (346)
+│   │       ├── coding.js         # monitor + baris kode (417)
+│   │       ├── testing.js        # dokumen + bug (312)
+│   │       ├── deployment.js     # roket (269)
+│   │       ├── maintenance.js    # roda gigi (229)
+│   │       └── review.js         # papan kanban (202)
 │   ├── models/
 │   │   ├── agile-2.glb           # Compressed model (Draco + WebP)
 │   │   └── agile-new-original-backup.glb  # [gitignored] Original 33MB
@@ -459,8 +467,9 @@ sdlc-ar/
 
 | File                                        | Penjelasan                                                                                     |
 | ------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `public/learn/ar.html`                    | **File paling penting.** Inti logic AR (scene, gesture, popup, TTS). 1328 baris. Edit dengan hati-hati. |
-| `public/learn/stage-models.js`            | Logika model 3D tahap + tombol aksi; dipisah dari ar.html (371 baris), dimuat sebelum script inline ar.html. |
+| `public/learn/ar.html`                    | **File paling penting.** Inti logic AR (scene, gesture, popup, TTS). 1335 baris. Edit dengan hati-hati. |
+| `public/learn/stage-models.js`            | **Hub** model 3D tahap + tombol aksi (191 baris); mendeklarasikan registry `STAGE_BUILDERS`. Dimuat pertama dari 8 `<script>` berurutan di ar.html. |
+| `public/learn/stages/*.js` (7 file)       | Isi 7 model tahap per jenis (33–417 baris); mendaftarkan diri ke `STAGE_BUILDERS`. Wajib dimuat setelah hub, sebelum script inline. |
 | `app/sw.ts`                               | Service worker — caching model 3D.                                                            |
 | `app/api/methods/by-slug/[slug]/route.ts` | API yang dipanggil oleh`ar.html` untuk load data.                                            |
 | `db/seed.ts`                              | Data awal (admin account + methods + steps).                                                   |
@@ -783,13 +792,15 @@ Form edit dialog mendukung scrolling (`max-h-[70vh] overflow-y-auto`) sehingga t
 
 ### Mesh Tidak Bisa Diklik
 
-**Gejala:** Ketuk model tapi tidak ada popup.
+**Gejala:** Ketuk tahapan tapi model 3D tahap tidak muncul (hanya toast ✓, atau popup langsung terbuka).
 
 **Debug:**
 
-1. Buka devtools console → lihat `[Model] Mesh names in GLB:` dan `[Model] Steps in DB:`
-2. Bandingkan — jika mesh name di GLB tidak ada di DB, update `meshName` di admin panel
-3. Jika mesh tidak terdeteksi sama sekali, cek scale model (terlalu kecil = raycaster susah)
+1. Buka devtools console → lihat `[Click] Detected mesh:` dan log `[Stage]`
+2. Log `[Stage] Tanpa model (URL kosong & tipe tak dikenal)` → nama mesh tidak cocok dengan `detectStageType()` di `stage-models.js`
+3. Log error `appendChild ... not of type 'Node'` → builder di `stages/<tahap>.js` tidak mengembalikan entity (wajib `return stageWrap(...)`)
+4. Bandingkan `[Model] Mesh names in GLB:` dengan `[Model] Steps in DB:` — jika mesh name di GLB tidak ada di DB, update `meshName` di admin panel
+5. Jika mesh tidak terdeteksi sama sekali, cek scale model (terlalu kecil = raycaster susah)
 
 ### Gestures Tidak Berfungsi (Rotate/Zoom)
 

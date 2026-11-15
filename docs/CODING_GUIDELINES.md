@@ -149,7 +149,7 @@ class Button extends React.Component
 | `schemas/` | Definisi validasi Zod untuk setiap request |
 | `lib/` | Konfigurasi dan helper bersama (`auth.ts`, `api-error.ts`, `utils.ts`) |
 | `types/` | Definisi tipe (`next-auth.d.ts`) |
-| `public/` | Aset statis: halaman AR `learn/ar.html` (1328 baris), script model tahap `learn/stage-models.js` (371 baris), marker `markers/targets.mind`, cadangan `models/`, audio, Service Worker `sw.js` |
+| `public/` | Aset statis: halaman AR `learn/ar.html` (1335 baris), hub model tahap `learn/stage-models.js` (191 baris), isi 7 model tahap `learn/stages/*.js` (33–417 baris), marker `markers/targets.mind`, cadangan `models/`, audio, Service Worker `sw.js` |
 | `docs/` | Dokumentasi proyek |
 | `ar/`, `components/ar/`, `stores/` | Kode AR React lama — **tidak aktif**, jangan dipakai sebagai referensi alur produksi |
 
@@ -266,10 +266,11 @@ Jangan membiarkan Promise tanpa penanganan error.
 
 | Aturan | Kenapa |
 | --- | --- |
-| Implementasi AR aktif berada di `public/learn/ar.html` (A-Frame 1.6.0 + MindAR 1.2.5 via CDN, Three.js via `AFRAME.THREE`), dengan logika model 3D tahap di `public/learn/stage-models.js` (dipisah dari ar.html, dimuat sebelum script inline-nya) | Halaman inilah yang dipakai pengguna; perubahan di tempat lain tidak berdampak pada fitur AR. |
+| Implementasi AR aktif berada di `public/learn/ar.html` (A-Frame 1.6.0 + MindAR 1.2.5 via CDN, Three.js via `AFRAME.THREE`); logika model 3D tahap ada di `public/learn/stage-models.js` (hub + registry `STAGE_BUILDERS`) dan isi 7 model per jenis di `public/learn/stages/<tahap>.js` | Halaman inilah yang dipakai pengguna; perubahan di tempat lain tidak berdampak pada fitur AR. |
 | React Three Fiber **tidak dipakai di produksi**; komponen AR React (`components/ar/*`, `ar/`, `stores/ar-store.ts`) adalah kode lama | Mencegah developer mengaktifkan kembali jalur ganda yang sudah tidak dipakai. |
 | Pisahkan kode AR (scene, raycaster, pemuatan model) dari kode UI React | Kode 3D dan kode halaman punya siklus hidup berbeda; mencampurnya membuat keduanya sulit diubah. |
 | Jangan mengubah alur AR (scan → load GLB → klik mesh → model 3D tahap + tombol aksi → popup → audio) tanpa persetujuan | Alur tersebut adalah inti produk dan sudah divalidasi pada pengujian. Revisi terakhir (model tahap + tombol "Lihat Penjelasan") sudah disetujui pemilik proyek. |
+| Setiap builder di `public/learn/stages/<tahap>.js` wajib mengembalikan entity (akhiri dengan `return stageWrap(...)` atau `return <a-entity>`) | Builder yang tidak return membuat `showStageModel()` melempar error `appendChild ... not of type 'Node'` — model 3D tahap tidak tampil dan tombol aksi/popup ikut mati (insiden `testing.js`). |
 
 **Kenapa:** Fitur AR adalah bagian paling sensitif terhadap perubahan; menjaga satu jalur implementasi yang jelas mengurangi risiko regresi.
 
