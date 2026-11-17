@@ -3,9 +3,10 @@
  *
  * DIPISAH dari ar.html. Berisi:
  *   - detectStageType()       deteksi tipe tahap dari nama mesh / judul
- *   - STAGE_BUILDERS          registry kosong — ISI 7 model prosedural ada di
- *                             public/learn/stages/*.js (dimuat SETELAH file ini): requirements,
- *                             design, coding, testing, deployment, maintenance, review
+ *   - detectMethod()          deteksi metode dari prefix mesh (WF_ / AG_ / RAD_)
+ *   - STAGE_BUILDERS          registry kosong — ISI 21 model prosedural (7 tahap × 3 metode)
+ *                             ada di public/learn/stages/{waterfall,agile,rad}.js (dimuat SETELAH
+ *                             file ini), key-nya "<metode>/<tahap>" mis. "rad/design"
  *   - showStageModel()        tampilkan model tahap (GLB R2 → hardcode → fallback)
  *   - hideStageModel()        kembalikan ke model utama
  *   - activateStageSwap()     sembunyikan model utama, posisikan model tahap
@@ -27,8 +28,8 @@
 // model 3D tahapan tersebut di atas marker (popup teks tetap di bawah).
 // Dua sumber model, urutan prioritas:
 //  1. GLB dari database  → step.stageModelUrl (file di R2, diisi via admin)
-//  2. Model hardcode     → file public/learn/stages/*.js per jenis tahap
-//     (requirements, design, coding, testing, deployment, maintenance, review)
+//  2. Model hardcode     → file public/learn/stages/<metode>.js (waterfall, agile, rad),
+//     masing-masing berisi 7 tahap dengan key "<metode>/<tahap>" — isi tiap metode boleh beda
 // Kalau dua-duanya tidak ada → tampilan normal (model utama tetap terlihat).
 let stageToken = 0;   // dinaikkan saat keluar mode tahap → membatalkan proses async
 let stageStep = null; // step yang model tahapnya sedang tampil (mode tahap aktif)
@@ -56,6 +57,16 @@ function detectStageType(meshName) {
     if (/IMPLEMENT|DEVELOP|CONSTRUCTION|CODING/.test(n)) return "coding";
     if (/DESIGN/.test(n)) return "design";
     if (/REQUIREMENT|ANALYS|PLANN/.test(n)) return "requirements";
+    return null;
+}
+
+// Deteksi metode dari prefix/segmen nama mesh (WF_ / AG_ / RAD_).
+// Dipakai untuk memilih builder PER METODE: STAGE_BUILDERS["<metode>/<tahap>"].
+function detectMethod(meshName) {
+    const n = String(meshName || "").toUpperCase();
+    if (/(^|_)RAD(_|$)/.test(n)) return "rad";
+    if (/(^|_)AG(_|$)/.test(n)) return "agile";
+    if (/(^|_)WF(_|$)/.test(n)) return "waterfall";
     return null;
 }
 
@@ -87,7 +98,7 @@ function stageWrap(children) {
     return g;
 }
 
-const STAGE_BUILDERS = {};   // registry — diisi oleh public/learn/stages/*.js (dimuat SETELAH file ini)
+const STAGE_BUILDERS = {};   // registry "<metode>/<tahap>" — diisi public/learn/stages/{waterfall,agile,rad}.js (dimuat SETELAH file ini)
 
 // Sembunyikan model tahap & tampilkan lagi model utama (panggil saat popup ditutup)
 function hideStageModel() {
@@ -154,6 +165,10 @@ function showStageModel(step, meshName) {
     const url = step && step.stageModelUrl
         ? String(step.stageModelUrl).trim() : "";
     const type = detectStageType(meshName);
+    const method = detectMethod(meshName);
+    // Builder: "<metode>/<tahap>" dulu → fallback "<tahap>" (registry generik bila ada)
+    const builder = (method && type && STAGE_BUILDERS[method + "/" + type])
+        || (type && STAGE_BUILDERS[type]) || null;
 
     if (url) {
         console.log("[Stage] Muat GLB tahap dari database:", url);
@@ -168,10 +183,10 @@ function showStageModel(step, meshName) {
         });
         child.addEventListener("model-error", function () {
             if (token !== stageToken) return;
-            console.warn("[Stage] GLB gagal → fallback:", type || "tampilan normal");
+            console.warn("[Stage] GLB gagal → fallback:", builder ? (method ? method + "/" : "") + type : "tampilan normal");
             if (child.parentNode) child.parentNode.removeChild(child);
-            if (type) {
-                stageEl.appendChild(STAGE_BUILDERS[type]());
+            if (builder) {
+                stageEl.appendChild(builder());
                 activateStageSwap();
             }
         });
@@ -179,13 +194,13 @@ function showStageModel(step, meshName) {
         return true;           // tampilan menyusul setelah model siap
     }
 
-    if (type && STAGE_BUILDERS[type]) {
+    if (builder) {
         stageStep = step;
-        stageEl.appendChild(STAGE_BUILDERS[type]());
+        stageEl.appendChild(builder());
         activateStageSwap();
-        console.log("[Stage] Model hardcode:", type, "| mesh:", meshName);
+        console.log("[Stage] Model hardcode:", (method ? method + "/" : "") + type, "| mesh:", meshName);
         return true;
     }
-    console.log("[Stage] Tanpa model (URL kosong & tipe tak dikenal) → popup langsung");
+    console.log("[Stage] Tanpa model (URL kosong & builder tak ditemukan) → popup langsung");
     return false;
 }

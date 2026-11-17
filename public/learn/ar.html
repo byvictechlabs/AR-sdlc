@@ -346,13 +346,27 @@
     </div>
 
     <script src="/learn/stage-models.js"></script>
-    <script src="/learn/stages/requirements.js"></script>
-    <script src="/learn/stages/design.js"></script>
-    <script src="/learn/stages/coding.js"></script>
-    <script src="/learn/stages/testing.js"></script>
-    <script src="/learn/stages/deployment.js"></script>
-    <script src="/learn/stages/maintenance.js"></script>
-    <script src="/learn/stages/review.js"></script>
+    <script src="/learn/stages/waterfall/requirements.js"></script>
+    <script src="/learn/stages/waterfall/design.js"></script>
+    <script src="/learn/stages/waterfall/coding.js"></script>
+    <script src="/learn/stages/waterfall/testing.js"></script>
+    <script src="/learn/stages/waterfall/deployment.js"></script>
+    <script src="/learn/stages/waterfall/maintenance.js"></script>
+    <script src="/learn/stages/waterfall/review.js"></script>
+    <script src="/learn/stages/agile/requirements.js"></script>
+    <script src="/learn/stages/agile/design.js"></script>
+    <script src="/learn/stages/agile/coding.js"></script>
+    <script src="/learn/stages/agile/testing.js"></script>
+    <script src="/learn/stages/agile/deployment.js"></script>
+    <script src="/learn/stages/agile/maintenance.js"></script>
+    <script src="/learn/stages/agile/review.js"></script>
+    <script src="/learn/stages/rad/requirements.js"></script>
+    <script src="/learn/stages/rad/design.js"></script>
+    <script src="/learn/stages/rad/coding.js"></script>
+    <script src="/learn/stages/rad/testing.js"></script>
+    <script src="/learn/stages/rad/deployment.js"></script>
+    <script src="/learn/stages/rad/maintenance.js"></script>
+    <script src="/learn/stages/rad/review.js"></script>
     <script>
         // ================= URL PARAMS =================
         const urlParams = new URLSearchParams(window.location.search);
@@ -1154,7 +1168,7 @@
         }
 
         // ================= STAGE 3D (model detail per tahap) =================
-        // Logika model 3D tahap DIPISAH ke public/learn/stage-models.js + stages/*.js
+        // Logika model 3D tahap DIPISAH ke public/learn/stage-models.js + stages/<metode>/*.js
         // (di-load sebelum script ini). Fungsi global di sana dipakai oleh
         // handleClick(), openPopup(), closePopup() dan targetLost().
 

@@ -1,15 +1,15 @@
 /**
- * stages/requirements.js — Model 3D tahap REQUIREMENTS.
+ * stages/agile/requirements.js — model 3D tahap REQUIREMENTS untuk metode AGILE.
  *
- * Dipisah dari stage-models.js. Mendaftarkan builder ke registry global
- * STAGE_BUILDERS (dideklarasikan di stage-models.js — file ini WAJIB dimuat
- * SETELAH stage-models.js; lihat urutan <script> di ar.html).
- *
- * Dipakai showStageModel() → STAGE_BUILDERS[type]() saat mesh tahap diklik.
+ * Key registry: STAGE_BUILDERS["agile/requirements"].
+ * Isi awal = copy identik dari kode tahap sebelumnya — edit bebas per metode,
+ * metode lain tidak terpengaruh.
+ * WAJIB dimuat SETELAH stage-models.js (lihat urutan <script> di ar.html).
  * Helper dari stage-models.js: stageEntity(), stageBox(), stageWrap().
  */
-    // 1. REQUIREMENTS — papan klip dokumen + kaca pembesar
-    STAGE_BUILDERS.requirements = function () {
+
+// 1. REQUIREMENTS — papan klip dokumen + kaca pembesar
+STAGE_BUILDERS["agile/requirements"] = function () {
         return stageWrap([
             stageBox(0.5, 0.65, 0.05, "#f8fafc", "0 0.06 0"),
             stageBox(0.18, 0.09, 0.07, "#2563eb", "0 0.42 0.01"),

@@ -1,15 +1,15 @@
 /**
- * stages/deployment.js — Model 3D tahap DEPLOYMENT.
+ * stages/rad/deployment.js — model 3D tahap DEPLOYMENT untuk metode RAD.
  *
- * Dipisah dari stage-models.js. Mendaftarkan builder ke registry global
- * STAGE_BUILDERS (dideklarasikan di stage-models.js — file ini WAJIB dimuat
- * SETELAH stage-models.js; lihat urutan <script> di ar.html).
- *
- * Dipakai showStageModel() → STAGE_BUILDERS[type]() saat mesh tahap diklik.
+ * Key registry: STAGE_BUILDERS["rad/deployment"].
+ * Isi awal = copy identik dari kode tahap sebelumnya — edit bebas per metode,
+ * metode lain tidak terpengaruh.
+ * WAJIB dimuat SETELAH stage-models.js (lihat urutan <script> di ar.html).
  * Helper dari stage-models.js: stageEntity(), stageBox(), stageWrap().
  */
-    // 5. DEPLOYMENT — roket lepas landas + api berkedip
-    STAGE_BUILDERS.deployment = function () {
+
+// 5. DEPLOYMENT — roket lepas landas + api berkedip
+STAGE_BUILDERS["rad/deployment"] = function () {
     // ============================================================
         //  SOFTWARE DEPLOYMENT DIORAMA (Waterfall) - "Release Runway"
         //  Platform terang (putih-es) + pad bundar, beda dari Design/Coding/Testing.

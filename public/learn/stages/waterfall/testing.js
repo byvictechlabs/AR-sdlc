@@ -1,16 +1,16 @@
 /**
- * stages/design.js — Model 3D tahap DESIGN.
+ * stages/waterfall/testing.js — model 3D tahap TESTING untuk metode WATERFALL.
  *
- * Dipisah dari stage-models.js. Mendaftarkan builder ke registry global
- * STAGE_BUILDERS (dideklarasikan di stage-models.js — file ini WAJIB dimuat
- * SETELAH stage-models.js; lihat urutan <script> di ar.html).
- *
- * Dipakai showStageModel() → STAGE_BUILDERS[type]() saat mesh tahap diklik.
+ * Key registry: STAGE_BUILDERS["waterfall/testing"].
+ * Isi awal = copy identik dari kode tahap sebelumnya — edit bebas per metode,
+ * metode lain tidak terpengaruh.
+ * WAJIB dimuat SETELAH stage-models.js (lihat urutan <script> di ar.html).
  * Helper dari stage-models.js: stageEntity(), stageBox(), stageWrap().
  */
-    // 2. DESIGN — meja blueprint + kubus wireframe + pensil
-    STAGE_BUILDERS.design = function () {
-        // ============================================================
+
+// 4. TESTING — dokumen + bug merah + kaca pembesar + centang
+STAGE_BUILDERS["waterfall/testing"] = function () {
+    // ============================================================
         //  SYSTEM DESIGN DIORAMA (Waterfall - tahap Design)
         //  Zona: UI/UX (kiri-belakang), Database (kanan-belakang),
         //        Mockup (kiri-depan), Arsitektur (kanan-depan)
@@ -343,4 +343,4 @@
         callout("System Architecture", 0.66, 0.12, 0.3, tipAR);
 
         return stageWrap(items);
-    };
+};

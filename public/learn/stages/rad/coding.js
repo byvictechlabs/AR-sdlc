@@ -1,15 +1,15 @@
 /**
- * stages/coding.js — Model 3D tahap CODING.
+ * stages/rad/coding.js — model 3D tahap CODING untuk metode RAD.
  *
- * Dipisah dari stage-models.js. Mendaftarkan builder ke registry global
- * STAGE_BUILDERS (dideklarasikan di stage-models.js — file ini WAJIB dimuat
- * SETELAH stage-models.js; lihat urutan <script> di ar.html).
- *
- * Dipakai showStageModel() → STAGE_BUILDERS[type]() saat mesh tahap diklik.
+ * Key registry: STAGE_BUILDERS["rad/coding"].
+ * Isi awal = copy identik dari kode tahap sebelumnya — edit bebas per metode,
+ * metode lain tidak terpengaruh.
+ * WAJIB dimuat SETELAH stage-models.js (lihat urutan <script> di ar.html).
  * Helper dari stage-models.js: stageEntity(), stageBox(), stageWrap().
  */
-    // 3. CODING — monitor + baris kode + keyboard
-    STAGE_BUILDERS.coding = function () {
+
+// 3. CODING — monitor + baris kode + keyboard
+STAGE_BUILDERS["rad/coding"] = function () {
         // ============================================================
         //  CODING / IMPLEMENTATION DIORAMA (Waterfall)
         //  Zona: Workstation + code editor (kiri), Frontend (tengah-belakang),

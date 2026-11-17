@@ -241,7 +241,7 @@ File GLB (3D Model)              Database (method_steps)
 
 ### File: `public/learn/ar.html`
 
-File ini adalah **inti aplikasi AR** (1335 baris) yang berisi sebagian besar logic AR. Logika model 3D tahap (stage model) dipecah jadi dua file pendukung: **`public/learn/stage-models.js`** (191 baris, hub + registry) dan **`public/learn/stages/*.js`** (7 file, isi model per jenis tahap). Kedelapan file itu dimuat lewat `<script>` berurutan (baris 348–355) sebelum script inline ar.html.
+File ini adalah **inti aplikasi AR** (1349 baris) yang berisi sebagian besar logic AR. Logika model 3D tahap (stage model) dipecah jadi dua pendukung: **`public/learn/stage-models.js`** (206 baris, hub + registry) dan **`public/learn/stages/<metode>/<tahap>.js`** (21 file = 7 tahap × 3 metode: folder `waterfall/`, `agile/`, `rad/`). Kedua puluh dua file itu dimuat lewat `<script>` berurutan (baris 348–369) sebelum script inline ar.html (baris 370).
 
 #### Komponen Utama
 
@@ -425,9 +425,9 @@ sdlc-ar/
 │
 ├── public/
 │   ├── learn/
-│   │   ├── ar.html               # ⭐ AR experience (static HTML, 1335 baris)
-│   │   ├── stage-models.js       # hub model 3D tahap + tombol aksi (191 baris)
-│   │   └── stages/               # 7 model tahap per jenis (33–417 baris)
+│   │   ├── ar.html               # ⭐ AR experience (static HTML, 1349 baris)
+│   │   ├── stage-models.js       # hub model 3D tahap + tombol aksi (206 baris)
+│   │   └── stages/               # 21 model per metode: waterfall/ agile/ rad/ (33–417 baris)
 │   │       ├── requirements.js   # papan klip dokumen (33)
 │   │       ├── design.js         # blueprint meja (346)
 │   │       ├── coding.js         # monitor + baris kode (417)
@@ -468,9 +468,9 @@ sdlc-ar/
 
 | File                                        | Penjelasan                                                                                     |
 | ------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `public/learn/ar.html`                    | **File paling penting.** Inti logic AR (scene, gesture, popup, TTS). 1335 baris. Edit dengan hati-hati. |
-| `public/learn/stage-models.js`            | **Hub** model 3D tahap + tombol aksi (191 baris); mendeklarasikan registry `STAGE_BUILDERS`. Dimuat pertama dari 8 `<script>` berurutan di ar.html. |
-| `public/learn/stages/*.js` (7 file)       | Isi 7 model tahap per jenis (33–417 baris); mendaftarkan diri ke `STAGE_BUILDERS`. Wajib dimuat setelah hub, sebelum script inline. |
+| `public/learn/ar.html`                    | **File paling penting.** Inti logic AR (scene, gesture, popup, TTS). 1349 baris. Edit dengan hati-hati. |
+| `public/learn/stage-models.js`            | **Hub** model 3D tahap + tombol aksi (206 baris); mendeklarasikan registry `STAGE_BUILDERS` (key `<metode>/<tahap>`). Dimuat pertama dari 22 `<script>` berurutan di ar.html. |
+| `public/learn/stages/<metode>/<tahap>.js` (21 file) | Isi model tahap per metode — folder `waterfall/`, `agile/`, `rad/`, masing-masing 7 tahap (33–417 baris); mendaftarkan diri ke `STAGE_BUILDERS["<metode>/<tahap>"]`. Wajib dimuat setelah hub, sebelum script inline. |
 | `app/sw.ts`                               | Service worker — caching model 3D.                                                            |
 | `app/api/methods/by-slug/[slug]/route.ts` | API yang dipanggil oleh`ar.html` untuk load data.                                            |
 | `db/seed.ts`                              | Data awal (admin account + methods + steps).                                                   |
@@ -511,7 +511,7 @@ tempat kodenya berada.**
 | 4 | Halaman panduan (6 langkah pemakaian) | `/home/panduan` | `app/home/panduan/page.tsx` |
 | 5 | **Halaman AR** — scan marker, model 3D, gesture, klik tahap, popup materi + TTS, tombol aksi | `/learn/ar.html?method=...` (dibuka via `/learn/<slug>`) | `public/learn/ar.html` (scene, raycaster, gesture, popup, tombol aksi) |
 | 6 | Redirect metode → halaman AR | `/learn/<slug>` | `app/learn/[slug]/page.tsx` |
-| 7 | **Model 3D per tahap** (diorama pengganti model utama saat tahap diklik) | — (dimuat oleh ar.html) | `public/learn/stage-models.js` (hub + deteksi tipe) dan `public/learn/stages/*.js` (7 file: requirements, design, coding, testing, deployment, maintenance, review) |
+| 7 | **Model 3D per tahap** (diorama pengganti model utama saat tahap diklik) | — (dimuat oleh ar.html) | `public/learn/stage-models.js` (hub + deteksi tipe & metode) dan `public/learn/stages/<metode>/<tahap>.js` (21 file: waterfall, agile, rad — masing-masing 7 tahap: requirements, design, coding, testing, deployment, maintenance, review) |
 
 ### Panel Admin
 
@@ -839,8 +839,8 @@ Form edit dialog mendukung scrolling (`max-h-[70vh] overflow-y-auto`) sehingga t
 **Debug:**
 
 1. Buka devtools console → lihat `[Click] Detected mesh:` dan log `[Stage]`
-2. Log `[Stage] Tanpa model (URL kosong & tipe tak dikenal)` → nama mesh tidak cocok dengan `detectStageType()` di `stage-models.js`
-3. Log error `appendChild ... not of type 'Node'` → builder di `stages/<tahap>.js` tidak mengembalikan entity (wajib `return stageWrap(...)`)
+2. Log `[Stage] Tanpa model (URL kosong & builder tak ditemukan)` → nama mesh tidak cocok `detectStageType()`/`detectMethod()` di `stage-models.js`
+3. Log error `appendChild ... not of type 'Node'` → builder di `stages/<metode>/<tahap>.js` tidak mengembalikan entity (wajib `return stageWrap(...)`)
 4. Bandingkan `[Model] Mesh names in GLB:` dengan `[Model] Steps in DB:` — jika mesh name di GLB tidak ada di DB, update `meshName` di admin panel
 5. Jika mesh tidak terdeteksi sama sekali, cek scale model (terlalu kecil = raycaster susah)
 

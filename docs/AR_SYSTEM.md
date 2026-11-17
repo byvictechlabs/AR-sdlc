@@ -84,7 +84,7 @@ Sistem AR dibangun dengan teknologi berikut:
 **Catatan penting:**
 
 - Halaman AR ditulis sebagai **file HTML statis** (`public/learn/ar.html`), **bukan** komponen React. Alasannya: A-Frame mengontrol DOM secara langsung dan bentrok dengan siklus hidup React (lihat `README.md` — bagian *Kenapa Menggunakan Static HTML*).
-- Logika model 3D tahap (stage model) dipecah jadi tiga tempat: elemen HTML + CSS di `ar.html`, logika inti di **`public/learn/stage-models.js`** (191 baris), dan 7 model per jenis tahap di **`public/learn/stages/*.js`**. `ar.html` (1335 baris) memuat ke-8 file itu lewat `<script>` berurutan sebelum script inline-nya — lihat bagian 5.1.
+- Logika model 3D tahap (stage model) dipecah jadi tiga tempat: elemen HTML + CSS di `ar.html`, logika inti di **`public/learn/stage-models.js`** (206 baris), dan 21 model per metode di **`public/learn/stages/<metode>/<tahap>.js`** (7 tahap × 3 metode: waterfall, agile, rad). `ar.html` (1349 baris) memuat ke-22 file itu lewat `<script>` berurutan (baris 348–369) sebelum script inline-nya — lihat bagian 5.1.
 - **React Three Fiber tidak dipakai** pada versi produksi. (Kode React AR lama masih ada di repo sebagai arsip, tetapi tidak aktif.)
 - MindAR dan A-Frame dimuat dari CDN — tidak perlu instalasi apapun di perangkat pengguna.
 
@@ -190,11 +190,11 @@ Fitur **Stage Model** membuat model 3D khusus tahap yang diklik **menggantikan m
 
 | Bagian | File | Isi |
 | --- | --- | --- |
-| Elemen & CSS | `public/learn/ar.html` (**1335 baris**) | `<div id="stage-cta">`, CSS `#stage-cta` / `.stage-cta-detail` / `.stage-cta-close`, entity `#stage-entity` |
-| Logika inti (**hub**) | `public/learn/stage-models.js` (**191 baris**) | state `stageToken` + `stageStep`, `showStageCTA()` / `hideStageCTA()` / `openDetailFromStage()`, `detectStageType()`, helper `stageEntity()` / `stageBox()` / `stageWrap()`, registry **`const STAGE_BUILDERS = {}` (kosong)**, `hideStageModel()`, `activateStageSwap()`, `fitStageGltf()`, `showStageModel()` |
-| Isi 7 model tahap | `public/learn/stages/*.js` (**7 file**, 33–417 baris) | `STAGE_BUILDERS.<tipe> = function () { ... }` untuk requirements, design, coding, testing, deployment, maintenance, review |
+| Elemen & CSS | `public/learn/ar.html` (**1349 baris**) | `<div id="stage-cta">`, CSS `#stage-cta` / `.stage-cta-detail` / `.stage-cta-close`, entity `#stage-entity` |
+| Logika inti (**hub**) | `public/learn/stage-models.js` (**206 baris**) | state `stageToken` + `stageStep`, `showStageCTA()` / `hideStageCTA()` / `openDetailFromStage()`, `detectStageType()`, `detectMethod()`, helper `stageEntity()` / `stageBox()` / `stageWrap()`, registry **`const STAGE_BUILDERS = {}` (kosong, key `<metode>/<tahap>`)**, `hideStageModel()`, `activateStageSwap()`, `fitStageGltf()`, `showStageModel()` |
+| Isi 21 model tahap (per metode) | `public/learn/stages/<metode>/<tahap>.js` (**21 file** = 3 metode × 7 tahap, 33–417 baris) | `STAGE_BUILDERS["<metode>/<tahap>"] = function () { ... }` — mis. `waterfall/design`, `agile/design`, `rad/design` (awalnya isi identik, boleh beda per metode) |
 
-**Urutan `<script>` di ar.html (baris 348–355):** `stage-models.js` (hub) → `stages/requirements.js` → `stages/design.js` → `stages/coding.js` → `stages/testing.js` → `stages/deployment.js` → `stages/maintenance.js` → `stages/review.js` → script inline utama ar.html (baris 356). Hub **wajib dimuat duluan** karena dialah yang mendeklarasikan `STAGE_BUILDERS`, dan semua **wajib sebelum** script inline — urutan ini yang menjamin ketujuh model siap dipakai `showStageModel()`. Seluruh fungsi di atas menjadi global sehingga `ar.html` bisa memanggilnya.
+**Urutan `<script>` di ar.html (baris 348–369):** `stage-models.js` (hub) → 21 file builder `stages/waterfall/*.js` (baris 349–355) → `stages/agile/*.js` (baris 356–362) → `stages/rad/*.js` (baris 363–369) → script inline utama ar.html (baris 370). Hub **wajib dimuat duluan** karena dialah yang mendeklarasikan `STAGE_BUILDERS`, dan semua **wajib sebelum** script inline — urutan ini yang menjamin 21 model siap dipakai `showStageModel()`. Seluruh fungsi di atas menjadi global sehingga `ar.html` bisa memanggilnya.
 
 **Alur singkat:**
 
@@ -222,7 +222,7 @@ Tombol "✕" aksi → keluar mode tahap → model utama tampil kembali
 | Prioritas | Sumber | Cara kerja |
 | --- | --- | --- |
 | 1 | **GLB dari database** | Kolom opsional `stageModelUrl` pada tabel `method_steps`, diisi lewat form admin `/admin/steps` (label: *"Stage Model URL (opsional — GLB 3D tahap di R2)"*). File GLB disimpan di R2 (`https://models.byvictech.site/models/stages/...`); yang masuk database hanya URL-nya. |
-| 2 | **Model hardcode** | Dibangun dari kode A-Frame primitives di **`public/learn/stages/<jenis>.js`** (7 file, satu per jenis), yang mendaftarkan dirinya ke registry `STAGE_BUILDERS` di `stage-models.js` — tidak memakai file GLB sama sekali. Dipakai bila URL kosong atau GLB gagal dimuat. |
+| 2 | **Model hardcode** | Dibangun dari kode A-Frame primitives di **`public/learn/stages/<metode>/<tahap>.js`** (21 file = 7 tahap × 3 metode), yang mendaftarkan dirinya ke registry `STAGE_BUILDERS["<metode>/<tahap>"]` di `stage-models.js` — tidak memakai file GLB sama sekali. Dipakai bila URL kosong atau GLB gagal dimuat. |
 | 3 | **Perilaku lama** | Bila keduanya tidak tersedia (`showStageModel()` mengembalikan `false`): model utama tetap terlihat dan **popup terbuka langsung** tanpa tombol aksi (persis seperti versi sebelumnya). |
 
 **7 jenis model hardcode** — dipilih oleh fungsi `detectStageType()` berdasarkan kata kunci di nama mesh (urutan deteksi dari atas ke bawah):
@@ -237,7 +237,7 @@ Tombol "✕" aksi → keluar mode tahap → model utama tampil kembali
 | `DESIGN` | design | blueprint + kubus wireframe + pensil |
 | `REQUIREMENT` / `ANALYS` / `PLANN` | requirements | papan klip + kaca pembesar |
 
-Bentuk model tiap baris di atas ditulis di file sendiri: **`public/learn/stages/<jenis>.js`** — `requirements.js` 33, `design.js` 346, `coding.js` 417, `testing.js` 312, `deployment.js` 269, `maintenance.js` 229, `review.js` 202 baris. Tiap file mendaftarkan dirinya ke registry, misalnya `STAGE_BUILDERS.design = function () { ... }`.
+Bentuk model tiap baris di atas ditulis di file sendiri per metode: **`public/learn/stages/<metode>/<tahap>.js`** — `requirements` 33, `design` 346, `coding` 417, `testing` 346, `deployment` 407, `maintenance` 385, `review` 202 baris (berlaku sama untuk ketiga metode; total 21 file). Tiap file mendaftarkan dirinya ke registry, misalnya `STAGE_BUILDERS["rad/design"] = function () { ... }` — isi tiap metode boleh diedit berbeda satu sama lain.
 
 **Sifat model tahap:**
 
@@ -254,8 +254,8 @@ Bentuk model tiap baris di atas ditulis di file sendiri: **`public/learn/stages/
 
 **Fungsi terkait:**
 
-- **Hub — `public/learn/stage-models.js` (191 baris, dimuat duluan):** `detectStageType()`, `stageEntity()`, `stageBox()`, `stageWrap()`, `STAGE_BUILDERS` (registry), `hideStageModel()`, `activateStageSwap()`, `fitStageGltf()`, `showStageModel(step, meshName)` (**return boolean**), `showStageCTA()`, `hideStageCTA()`, `openDetailFromStage()`.
-- **Isi builder — `public/learn/stages/*.js` (dimuat setelah hub):** `STAGE_BUILDERS.requirements`, `.design`, `.coding`, `.testing`, `.deployment`, `.maintenance`, `.review` — masing-masing satu fungsi tanpa parameter yang mengembalikan entity A-Frame.
+- **Hub — `public/learn/stage-models.js` (206 baris, dimuat duluan):** `detectStageType()`, `detectMethod()`, `stageEntity()`, `stageBox()`, `stageWrap()`, `STAGE_BUILDERS` (registry), `hideStageModel()`, `activateStageSwap()`, `fitStageGltf()`, `showStageModel(step, meshName)` (**return boolean**), `showStageCTA()`, `hideStageCTA()`, `openDetailFromStage()`.
+- **Isi builder — `public/learn/stages/<metode>/<tahap>.js` (21 file, dimuat setelah hub):** `STAGE_BUILDERS["waterfall/…"]`, `STAGE_BUILDERS["agile/…"]`, `STAGE_BUILDERS["rad/…"]` — masing-masing 7 tahap (requirements, design, coding, testing, deployment, maintenance, review), satu fungsi tanpa parameter yang mengembalikan entity A-Frame.
 
 **Sambungan dengan alur klik:**
 
@@ -284,7 +284,7 @@ tombol "✕" aksi / targetLost → hideStageModel()   (keluar mode tahap:
 [Stage] GLB tahap tampil
 [Stage] GLB gagal → fallback:
 [Stage] Model hardcode:
-[Stage] Tanpa model (URL kosong & tipe tak dikenal) → popup langsung
+[Stage] Tanpa model (URL kosong & builder tak ditemukan) → popup langsung
 ```
 
 Catatan: kode interaktif pengguna (gesture rotate / pinch / pan) **tidak berubah** oleh fitur ini.
@@ -319,7 +319,7 @@ Saat mode tahap aktif, pengguna **tidak langsung** membuka popup. Layar menampil
 | 2 | Klik **"📋 Lihat Penjelasan"** | **Barulah** popup detail terbuka (teks materi + kontrol TTS tetap persis seperti sebelumnya) |
 | 3 | Tutup popup (✕ popup / backdrop) | Popup hilang, **model tahap tetap tampil**, tombol aksi muncul lagi |
 | 4 | Klik tombol **"✕"** aksi | Keluar dari mode tahap → model utama tampil kembali |
-| 5 | Fallback: mesh tanpa model tahap (URL kosong & tipe tak dikenal) | Popup terbuka **langsung** tanpa tombol (perilaku lama) |
+| 5 | Fallback: mesh tanpa model tahap (URL kosong & builder tak ditemukan) | Popup terbuka **langsung** tanpa tombol (perilaku lama) |
 | 6 | Ketuk bebas di scene selama mode tahap aktif | Diabaikan (guard `if (stageStep) return;`) — gunakan tombol. Marker hilang (`targetLost`) → membersihkan model tahap **dan** tombol aksi sekaligus |
 | 7 | Mode URL: tombol diklik saat GLB masih loading | Tombol tetap bisa diklik; model tampil begitu selesai dimuat |
 
