@@ -241,7 +241,7 @@ File GLB (3D Model)              Database (method_steps)
 
 ### File: `public/learn/ar.html`
 
-File ini adalah **inti aplikasi AR** (1349 baris) yang berisi sebagian besar logic AR. Logika model 3D tahap (stage model) dipecah jadi dua pendukung: **`public/learn/stage-models.js`** (206 baris, hub + registry) dan **`public/learn/stages/<metode>/<tahap>.js`** (21 file = 7 tahap × 3 metode: folder `waterfall/`, `agile/`, `rad/`). Kedua puluh dua file itu dimuat lewat `<script>` berurutan (baris 348–369) sebelum script inline ar.html (baris 370).
+File ini adalah **inti aplikasi AR** (1344 baris) yang berisi sebagian besar logic AR. Logika model 3D tahap (stage model) dipecah jadi dua pendukung: **`public/learn/stage-models.js`** (525 baris, hub + `stageKit()` + registry) dan **`public/learn/stages/<metode>/<tahap>.js`** (16 file sesuai rancangan client: `rad/` 4 tahap, `agile/` 7 tahap, `waterfall/` 5 tahap). Ke-17 file itu dimuat lewat `<script>` berurutan (baris 348–364) sebelum script inline ar.html (baris 365–1342).
 
 #### Komponen Utama
 
@@ -425,16 +425,12 @@ sdlc-ar/
 │
 ├── public/
 │   ├── learn/
-│   │   ├── ar.html               # ⭐ AR experience (static HTML, 1349 baris)
-│   │   ├── stage-models.js       # hub model 3D tahap + tombol aksi (206 baris)
-│   │   └── stages/               # 21 model per metode: waterfall/ agile/ rad/ (33–417 baris)
-│   │       ├── requirements.js   # papan klip dokumen (33)
-│   │       ├── design.js         # blueprint meja (346)
-│   │       ├── coding.js         # monitor + baris kode (417)
-│   │       ├── testing.js        # dokumen + bug (312)
-│   │       ├── deployment.js     # roket (269)
-│   │       ├── maintenance.js    # roda gigi (229)
-│   │       └── review.js         # papan kanban (202)
+│   │   ├── ar.html               # ⭐ AR experience (static HTML, 1344 baris)
+│   │   ├── stage-models.js       # hub model 3D tahap + tombol aksi (525 baris)
+│   │   └── stages/               # 16 model per tahap (rancangan client): waterfall/ (5) agile/ (7) rad/ (4)
+│   │       ├── waterfall/        # requirements-analysis, design, development, testing, maintenance
+│   │       ├── agile/            # plan, design, develop, test, deploy, review, launch
+│   │       └── rad/              # requirements-planning, user-design, construction, cutover
 │   ├── models/
 │   │   ├── agile-2.glb           # Compressed model (Draco + WebP)
 │   │   └── agile-new-original-backup.glb  # [gitignored] Original 33MB
@@ -468,9 +464,9 @@ sdlc-ar/
 
 | File                                        | Penjelasan                                                                                     |
 | ------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `public/learn/ar.html`                    | **File paling penting.** Inti logic AR (scene, gesture, popup, TTS). 1349 baris. Edit dengan hati-hati. |
-| `public/learn/stage-models.js`            | **Hub** model 3D tahap + tombol aksi (206 baris); mendeklarasikan registry `STAGE_BUILDERS` (key `<metode>/<tahap>`). Dimuat pertama dari 22 `<script>` berurutan di ar.html. |
-| `public/learn/stages/<metode>/<tahap>.js` (21 file) | Isi model tahap per metode — folder `waterfall/`, `agile/`, `rad/`, masing-masing 7 tahap (33–417 baris); mendaftarkan diri ke `STAGE_BUILDERS["<metode>/<tahap>"]`. Wajib dimuat setelah hub, sebelum script inline. |
+| `public/learn/ar.html`                    | **File paling penting.** Inti logic AR (scene, gesture, popup, TTS). 1344 baris. Edit dengan hati-hati. |
+| `public/learn/stage-models.js`            | **Hub** model 3D tahap + tombol aksi (525 baris); `stageKit()` (helper bersama) + registry `STAGE_BUILDERS` (key `<metode>/<tahap>`). Dimuat pertama dari 17 `<script>` berurutan di ar.html. |
+| `public/learn/stages/<metode>/<tahap>.js` (16 file) | Isi model tahap sesuai rancangan client — `rad/` (4), `agile/` (7), `waterfall/` (5), 89–343 baris; mendaftarkan diri ke `STAGE_BUILDERS["<metode>/<tahap>"]`. Wajib dimuat setelah hub, sebelum script inline. |
 | `app/sw.ts`                               | Service worker — caching model 3D.                                                            |
 | `app/api/methods/by-slug/[slug]/route.ts` | API yang dipanggil oleh`ar.html` untuk load data.                                            |
 | `db/seed.ts`                              | Data awal (admin account + methods + steps).                                                   |
@@ -511,7 +507,7 @@ tempat kodenya berada.**
 | 4 | Halaman panduan (6 langkah pemakaian) | `/home/panduan` | `app/home/panduan/page.tsx` |
 | 5 | **Halaman AR** — scan marker, model 3D, gesture, klik tahap, popup materi + TTS, tombol aksi | `/learn/ar.html?method=...` (dibuka via `/learn/<slug>`) | `public/learn/ar.html` (scene, raycaster, gesture, popup, tombol aksi) |
 | 6 | Redirect metode → halaman AR | `/learn/<slug>` | `app/learn/[slug]/page.tsx` |
-| 7 | **Model 3D per tahap** (diorama pengganti model utama saat tahap diklik) | — (dimuat oleh ar.html) | `public/learn/stage-models.js` (hub + deteksi tipe & metode) dan `public/learn/stages/<metode>/<tahap>.js` (21 file: waterfall, agile, rad — masing-masing 7 tahap: requirements, design, coding, testing, deployment, maintenance, review) |
+| 7 | **Model 3D per tahap** (diorama pengganti model utama saat tahap diklik) | — (dimuat oleh ar.html) | `public/learn/stage-models.js` (hub + `stageKit()` + deteksi tipe aware metode) dan `public/learn/stages/<metode>/<tahap>.js` (16 file sesuai `docs/Rancangan_Isi_Model_3D_Tahapan_SDLC.docx`: rad requirements-planning/user-design/construction/cutover, agile plan/design/develop/test/deploy/review/launch, waterfall requirements-analysis/design/development/testing/maintenance) |
 
 ### Panel Admin
 

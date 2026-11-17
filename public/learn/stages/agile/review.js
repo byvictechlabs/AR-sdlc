@@ -1,202 +1,96 @@
 /**
- * stages/agile/review.js — model 3D tahap REVIEW untuk metode AGILE.
- *
- * Key registry: STAGE_BUILDERS["agile/review"].
- * Isi awal = copy identik dari kode tahap sebelumnya — edit bebas per metode,
- * metode lain tidak terpengaruh.
+ * agile/review.js — Agile tahap 6: Review (3 zona callout).
+ * Label: Demo, Feedback, Improvement Plan.
+ * DISESUAIKAN docs/Rancangan_Isi_Model_3D_Tahapan_SDLC — isi spesifik Agile
+ * (mengganti label lama: Sprint Presentation, Stakeholder Feedback, dst).
  * WAJIB dimuat SETELAH stage-models.js (lihat urutan <script> di ar.html).
- * Helper dari stage-models.js: stageEntity(), stageBox(), stageWrap().
  */
-
-// 7. REVIEW — papan kanban 3 kolom + centang selesai
 STAGE_BUILDERS["agile/review"] = function () {
-    // Helper untuk membuat label dengan connector line
-    const createLabel = (text, position, targetPosition) => {
-        return [
-            // Label background
-            stageBox(0.18, 0.04, 0.01, "#1e293b", position, { 
-                opacity: 0.9 
-            }),
-            // Label text
-            stageEntity({
-                geometry: "primitive: plane; width: 0.17; height: 0.035",
-                material: `color: #ffffff; shader: flat; transparent: true`,
-                position: `${position.split(' ')[0]} ${parseFloat(position.split(' ')[1]) + 0.001} ${parseFloat(position.split(' ')[2]) + 0.006}`,
-                text: `value: ${text}; color: #ffffff; align: center; width: 0.17; font: mozillavr`,
-            }),
-            // Connector line (vertical)
-            stageEntity({
-                geometry: "primitive: cylinder; radius: 0.003; height: 0.06",
-                material: "color: #64748b; opacity: 0.7",
-                position: `${position.split(' ')[0]} ${parseFloat(position.split(' ')[1]) - 0.03} ${position.split(' ')[2]}`,
-            }),
-            // Connector dot at target
-            stageEntity({
-                geometry: "primitive: sphere; radius: 0.008",
-                material: "color: #3b82f6",
-                position: targetPosition,
-            }),
-        ];
-    };
+    var K = stageKit(), items = K.items, W = K.W;
+    var NAVY = K.NAVY, DEEP = K.DEEP, BLUE = K.BLUE, MID = K.MID, SKY = K.SKY,
+        PALE = K.PALE, ICE = K.ICE, WHITE = K.WHITE, SLATE = K.SLATE, CYAN = K.CYAN,
+        AMBER = K.AMBER, GREEN = K.GREEN, RED = K.RED;
+    var n = K.n, pos = K.pos, frame = K.frame, sub = K.sub, part = K.part,
+        B = K.B, C = K.C, Sp = K.Sp, seg = K.seg, mv = K.mv, glow = K.glow,
+        callout = K.callout, tag = K.tag, check = K.check, person = K.person,
+        screen = K.screen, board = K.board, doc = K.doc, bubble = K.bubble,
+        server = K.server, cloud = K.cloud, rocket = K.rocket, bug = K.bug, arrow = K.arrow;
+    var Y0 = -0.36, i;
 
-    // Flatten array helper
-    const flatten = (arr) => arr.reduce((acc, val) => 
-        Array.isArray(val) ? acc.concat(flatten(val)) : acc.concat(val), []);
+    K.platform();
+    B(W, 0.46, 0.008, 0.3, "#2a5bd7", -0.35, -0.364, -0.16, { m: 0.1 });
+    B(W, 0.46, 0.008, 0.3, "#2a5bd7", 0.35, -0.364, -0.16, { m: 0.1 });
+    B(W, 0.52, 0.008, 0.3, "#2a5bd7", 0, -0.364, 0.24, { m: 0.1 });
 
-    return stageWrap(flatten([
-        // === BASE PLATFORM ===
-        stageBox(0.9, 0.02, 0.9, "#0f172a", "0 -0.15 0", { 
-            opacity: 0.3 
-        }),
+    // ============================================================
+    //  1. DEMO (kiri-belakang): presenter + layar grafik performa sprint
+    // ============================================================
+    var A = frame(-0.35, Y0, -0.16, 8);
+    var Dm = screen(A, 0.27, 0.18, { x: 0.05, z: -0.05, bg: "#0f172a" });
+    B(Dm, 0.23, 0.024, 0.003, MID, 0, 0.06, 0.005);
+    // batang grafik
+    var barH = [0.05, 0.08, 0.065, 0.1], barC = [SKY, CYAN, AMBER, GREEN];
+    for (i = 0; i < 4; i++) {
+        B(Dm, 0.035, barH[i], 0.004, barC[i], -0.075 + i * 0.05, -0.055 + barH[i] / 2, 0.005,
+            { e: barC[i], ei: 0.35 });
+    }
+    B(Dm, 0.21, 0.006, 0.003, SLATE, 0, -0.057, 0.005);
+    person(A, -0.14, 0.07, { point: true, c: DEEP });
+    bubble(A, -0.16, 0.17, 0.06, { w: 0.055, h: 0.036 });
 
-        // === 1. SPRINT PRESENTATION (Large Screen - Center Focus) ===
-        // Screen frame
-        stageBox(0.4, 0.28, 0.02, "#1e293b", "0 0.2 0"),
-        // Screen display
-        stageBox(0.37, 0.25, 0.01, "#f1f5f9", "0 0.21 0.011"),
-        // App UI on screen - Navigation bar
-        stageBox(0.34, 0.03, 0.005, "#3b82f6", "0 0.31 0.017"),
-        // Content cards
-        stageBox(0.08, 0.06, 0.005, "#e2e8f0", "-0.1 0.2 0.017"),
-        stageBox(0.08, 0.06, 0.005, "#e2e8f0", "0 0.2 0.017"),
-        stageBox(0.08, 0.06, 0.005, "#e2e8f0", "0.1 0.2 0.017"),
-        // Action button
-        stageBox(0.12, 0.02, 0.005, "#10b981", "0 0.12 0.017"),
-        // Screen stand
-        stageEntity({
-            geometry: "primitive: cylinder; radius: 0.02; height: 0.1",
-            material: "color: #475569",
-            position: "0 0.02 0",
-        }),
-        // Screen base
-        stageBox(0.1, 0.01, 0.08, "#334155", "0 -0.04 0"),
+    // ============================================================
+    //  2. FEEDBACK (kanan-belakang): gelembung komentar + jempol
+    // ============================================================
+    var Bz = frame(0.35, Y0, -0.16, -8);
+    // gelembung besar (komentar utama)
+    B(Bz, 0.17, 0.11, 0.016, WHITE, -0.02, 0.15, -0.02, { m: 0.1, r: 0.8 });
+    part(Bz, "primitive: cone; radiusBottom: " + n(0.016) + "; radiusTop: 0; height: " + n(0.03) +
+        "; segmentsRadial: 10", WHITE, 0.0, 0.078, -0.02, { rx: 180, m: 0.1, r: 0.8 });
+    for (i = 0; i < 3; i++) {
+        B(Bz, 0.13 - i * 0.03, 0.01, 0.005, SLATE, -0.03, 0.175 - i * 0.03, -0.011);
+    }
+    // gelembung kecil pendamping
+    bubble(Bz, -0.15, 0.06, 0.06, { w: 0.06, h: 0.04, lines: false, c: ICE });
+    bubble(Bz, 0.13, 0.05, 0.05, { w: 0.05, h: 0.034, lines: false, c: PALE });
+    // jempol (apresiasi) di kanan-bawah
+    B(Bz, 0.05, 0.055, 0.022, "#fde68a", 0.11, 0.13, 0.07, { rz: -10, m: 0.4 });
+    B(Bz, 0.02, 0.05, 0.02, "#fcd34d", 0.093, 0.172, 0.07, { rz: -22, m: 0.4 });
+    B(Bz, 0.056, 0.02, 0.024, "#f59e0b", 0.112, 0.098, 0.07, { rz: -10, m: 0.4 });
+    Sp(Bz, 0.014, CYAN, 0.155, 0.155, 0.07, { e: CYAN, ei: 0.8, anim: "property: emissiveIntensity; from: 0.3; to: 1; loop: true; dur: 1000; dir: alternate" });
 
-        // === 2. DEVELOPMENT TEAM (Left side) ===
-        // Team Member 1
-        stageEntity({
-            geometry: "primitive: sphere; radius: 0.025",
-            material: "color: #3b82f6",
-            position: "-0.3 0.1 0.15",
-        }),
-        stageEntity({
-            geometry: "primitive: cylinder; radius: 0.02; height: 0.06",
-            material: "color: #3b82f6",
-            position: "-0.3 0.04 0.15",
-        }),
-        // Laptop 1
-        stageBox(0.06, 0.005, 0.04, "#1e293b", "-0.3 0.01 0.18"),
-        stageBox(0.05, 0.04, 0.005, "#0f172a", "-0.3 0.03 0.2"),
-        
-        // Team Member 2
-        stageEntity({
-            geometry: "primitive: sphere; radius: 0.025",
-            material: "color: #0ea5e9",
-            position: "-0.38 0.1 0.08",
-        }),
-        stageEntity({
-            geometry: "primitive: cylinder; radius: 0.02; height: 0.06",
-            material: "color: #0ea5e9",
-            position: "-0.38 0.04 0.08",
-        }),
-        // Laptop 2
-        stageBox(0.06, 0.005, 0.04, "#1e293b", "-0.38 0.01 0.11"),
-        stageBox(0.05, 0.04, 0.005, "#0f172a", "-0.38 0.03 0.13"),
+    // ============================================================
+    //  3. IMPROVEMENT PLAN (tengah-depan): papan tugas + panah melingkar
+    // ============================================================
+    var Cz = frame(0, Y0, 0.24, 0);
+    var Pb = board(Cz, 0.24, 0.16, { x: -0.05, z: -0.05, bg: WHITE, htxt: "IMPROVE", hc: MID });
+    for (i = 0; i < 3; i++) {
+        B(Pb, 0.13, 0.01, 0.004, SLATE, -0.025, 0.035 - i * 0.035, 0.005);
+        check(Pb, 0.075, 0.035 - i * 0.035, 0.006, 0.015, i < 2 ? GREEN : AMBER);
+    }
+    // panah melingkar (perbaikan berkelanjutan) di kanan depan papan
+    var ccx = 0.13, ccy = 0.14, cr = 0.055, ang, rad = Math.PI / 180;
+    for (i = 0; i < 4; i++) {
+        ang = 35 + i * 78;
+        B(Cz, 0.05, 0.012, 0.01, CYAN,
+            ccx + cr * Math.cos(ang * rad), ccy + cr * Math.sin(ang * rad), 0.06,
+            { rz: ang + 90, e: CYAN, ei: 0.5 });
+    }
+    arrow(
+        Cz(ccx + cr * Math.cos(326 * rad), ccy + cr * Math.sin(326 * rad), 0.06),
+        Cz(ccx + cr * Math.cos(352 * rad), ccy + cr * Math.sin(352 * rad), 0.06),
+        CYAN, 0.005, { e: CYAN, ei: 0.9, h: 0.03 });
+    Sp(Cz, 0.01, GREEN, ccx, ccy, 0.06, { e: GREEN, ei: 0.8 });
+    tag(Cz, "Iterasi", ccx, ccy - 0.1, 0.06);
 
-        // === 3. STAKEHOLDER FEEDBACK (Right side) ===
-        // Stakeholder 1
-        stageEntity({
-            geometry: "primitive: sphere; radius: 0.025",
-            material: "color: #f59e0b",
-            position: "0.3 0.1 0.15",
-        }),
-        stageEntity({
-            geometry: "primitive: cylinder; radius: 0.02; height: 0.06",
-            material: "color: #f59e0b",
-            position: "0.3 0.04 0.15",
-        }),
-        // Speech bubble 1
-        stageBox(0.08, 0.05, 0.01, "#fef3c7", "0.3 0.18 0.15"),
-        stageBox(0.06, 0.008, 0.005, "#f59e0b", "0.3 0.19 0.156"),
-        stageBox(0.05, 0.008, 0.005, "#f59e0b", "0.3 0.17 0.156"),
-        
-        // Stakeholder 2
-        stageEntity({
-            geometry: "primitive: sphere; radius: 0.025",
-            material: "color: #f97316",
-            position: "0.38 0.1 0.08",
-        }),
-        stageEntity({
-            geometry: "primitive: cylinder; radius: 0.02; height: 0.06",
-            material: "color: #f97316",
-            position: "0.38 0.04 0.08",
-        }),
-        // Speech bubble 2
-        stageBox(0.08, 0.05, 0.01, "#fed7aa", "0.38 0.18 0.08"),
-        stageBox(0.06, 0.008, 0.005, "#f97316", "0.38 0.19 0.086"),
-        stageBox(0.05, 0.008, 0.005, "#f97316", "0.38 0.17 0.086"),
+    // ============================================================
+    //  LABEL + CALLOUT
+    // ============================================================
+    var t1 = A(0.05, 0.22, -0.05);    // puncak layar demo
+    var t2 = Bz(-0.02, 0.23, -0.02);  // puncak gelembung besar
+    var t3 = Cz(ccx, ccy + 0.09, 0.06);// puncak panah melingkar
+    callout("Demo", t1[0], 0.32, -0.22, t1);
+    callout("Feedback", t2[0], 0.32, -0.22, t2);
+    callout("Improvement Plan", 0, 0.14, 0.6, t3);
 
-        // === 4. SPRINT PROGRESS (Kanban Board - Background) ===
-        // Board frame
-        stageBox(0.5, 0.35, 0.02, "#0f172a", "0 0.35 -0.2"),
-        // Column headers
-        stageBox(0.14, 0.04, 0.005, "#16a34a", "-0.17 0.48 -0.19"),
-        stageBox(0.14, 0.04, 0.005, "#3b82f6", "0 0.48 -0.19"),
-        stageBox(0.14, 0.04, 0.005, "#f59e0b", "0.17 0.48 -0.19"),
-        // Column backgrounds
-        stageBox(0.14, 0.28, 0.005, "#1e293b", "-0.17 0.3 -0.19"),
-        stageBox(0.14, 0.28, 0.005, "#1e293b", "0 0.3 -0.19"),
-        stageBox(0.14, 0.28, 0.005, "#1e293b", "0.17 0.3 -0.19"),
-        // Task cards - Done column (green)
-        stageBox(0.12, 0.04, 0.006, "#dcfce7", "-0.17 0.4 -0.185"),
-        stageBox(0.12, 0.04, 0.006, "#dcfce7", "-0.17 0.34 -0.185"),
-        stageBox(0.12, 0.04, 0.006, "#dcfce7", "-0.17 0.28 -0.185"),
-        // Task cards - In Review column (blue)
-        stageBox(0.12, 0.04, 0.006, "#dbeafe", "0 0.4 -0.185"),
-        stageBox(0.12, 0.04, 0.006, "#dbeafe", "0 0.34 -0.185"),
-        // Task cards - Feedback column (yellow/orange)
-        stageBox(0.12, 0.04, 0.006, "#fef3c7", "0.17 0.4 -0.185"),
-
-        // === 5. NEXT IMPROVEMENTS (Backlog Items) ===
-        // Backlog item 1
-        stageBox(0.15, 0.05, 0.02, "#1e293b", "0.35 -0.05 0.2"),
-        stageBox(0.13, 0.04, 0.005, "#334155", "0.35 -0.05 0.211"),
-        stageBox(0.1, 0.008, 0.005, "#64748b", "0.35 -0.04 0.217"),
-        stageBox(0.08, 0.008, 0.005, "#64748b", "0.35 -0.06 0.217"),
-        
-        // Backlog item 2
-        stageBox(0.15, 0.05, 0.02, "#1e293b", "0.35 -0.13 0.2"),
-        stageBox(0.13, 0.04, 0.005, "#334155", "0.35 -0.13 0.211"),
-        stageBox(0.1, 0.008, 0.005, "#64748b", "0.35 -0.12 0.217"),
-        stageBox(0.08, 0.008, 0.005, "#64748b", "0.35 -0.14 0.217"),
-        
-        // Arrow from feedback to backlog (showing flow)
-        stageEntity({
-            geometry: "primitive: cylinder; radius: 0.004; height: 0.15",
-            material: "color: #f59e0b; opacity: 0.6",
-            position: "0.25 0.05 0.18",
-            rotation: "0 0 45",
-        }),
-        stageEntity({
-            geometry: "primitive: cone; radius: 0.015; height: 0.03",
-            material: "color: #f59e0b",
-            position: "0.32 -0.02 0.18",
-            rotation: "0 0 45",
-        }),
-
-        // === LABELS WITH CONNECTORS ===
-        // Label 1: Sprint Presentation
-        ...createLabel("Sprint Presentation", "0 0.55 0", "0 0.4 0.01"),
-        
-        // Label 2: Development Team
-        ...createLabel("Development Team", "-0.34 0.25 0.12", "-0.34 0.12 0.12"),
-        
-        // Label 3: Stakeholder Feedback
-        ...createLabel("Stakeholder Feedback", "0.34 0.3 0.12", "0.34 0.18 0.12"),
-        
-        // Label 4: Sprint Progress
-        ...createLabel("Sprint Progress", "0 0.6 -0.2", "0 0.5 -0.19"),
-        
-        // Label 5: Next Improvements
-        ...createLabel("Next Improvements", "0.35 0.1 0.2", "0.35 0 0.21"),
-    ]));
+    return stageWrap(items);
 };

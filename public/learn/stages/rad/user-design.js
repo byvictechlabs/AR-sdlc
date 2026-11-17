@@ -1,15 +1,12 @@
 /**
- * stages/rad/design.js — model 3D tahap DESIGN untuk metode RAD.
- *
- * Key registry: STAGE_BUILDERS["rad/design"].
- * Isi awal = copy identik dari kode tahap sebelumnya — edit bebas per metode,
- * metode lain tidak terpengaruh.
+ * rad/user-design.js — RAD tahap 2: User Design (4 zona callout).
+ * Label: UI/UX Design, Application Mockup, Database Design, System Architecture.
+ * DISESUAIKAN docs/Rancangan_Isi_Model_3D_Tahapan_SDLC — isi tidak diubah
+ * (tampilan User Design = referensi gaya untuk 15 tahap lainnya).
  * WAJIB dimuat SETELAH stage-models.js (lihat urutan <script> di ar.html).
- * Helper dari stage-models.js: stageEntity(), stageBox(), stageWrap().
  */
 
-// 2. DESIGN — meja blueprint + kubus wireframe + pensil
-STAGE_BUILDERS["rad/design"] = function () {
+STAGE_BUILDERS["rad/user-design"] = function () {
         // ============================================================
         //  SYSTEM DESIGN DIORAMA (Waterfall - tahap Design)
         //  Zona: UI/UX (kiri-belakang), Database (kanan-belakang),

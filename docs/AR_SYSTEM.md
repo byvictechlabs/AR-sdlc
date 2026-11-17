@@ -84,7 +84,7 @@ Sistem AR dibangun dengan teknologi berikut:
 **Catatan penting:**
 
 - Halaman AR ditulis sebagai **file HTML statis** (`public/learn/ar.html`), **bukan** komponen React. Alasannya: A-Frame mengontrol DOM secara langsung dan bentrok dengan siklus hidup React (lihat `README.md` — bagian *Kenapa Menggunakan Static HTML*).
-- Logika model 3D tahap (stage model) dipecah jadi tiga tempat: elemen HTML + CSS di `ar.html`, logika inti di **`public/learn/stage-models.js`** (206 baris), dan 21 model per metode di **`public/learn/stages/<metode>/<tahap>.js`** (7 tahap × 3 metode: waterfall, agile, rad). `ar.html` (1349 baris) memuat ke-22 file itu lewat `<script>` berurutan (baris 348–369) sebelum script inline-nya — lihat bagian 5.1.
+- Logika model 3D tahap (stage model) dipecah jadi tiga tempat: elemen HTML + CSS di `ar.html`, logika inti di **`public/learn/stage-models.js`** (525 baris — termasuk kit bersama `stageKit()`), dan 16 model per tahap di **`public/learn/stages/<metode>/<tahap>.js`** (RAD 4 + Agile 7 + Waterfall 5 sesuai rancangan client). `ar.html` (1344 baris) memuat ke-17 file itu lewat `<script>` berurutan (baris 348–364) sebelum script inline-nya — lihat bagian 5.1.
 - **React Three Fiber tidak dipakai** pada versi produksi. (Kode React AR lama masih ada di repo sebagai arsip, tetapi tidak aktif.)
 - MindAR dan A-Frame dimuat dari CDN — tidak perlu instalasi apapun di perangkat pengguna.
 
@@ -190,11 +190,11 @@ Fitur **Stage Model** membuat model 3D khusus tahap yang diklik **menggantikan m
 
 | Bagian | File | Isi |
 | --- | --- | --- |
-| Elemen & CSS | `public/learn/ar.html` (**1349 baris**) | `<div id="stage-cta">`, CSS `#stage-cta` / `.stage-cta-detail` / `.stage-cta-close`, entity `#stage-entity` |
-| Logika inti (**hub**) | `public/learn/stage-models.js` (**206 baris**) | state `stageToken` + `stageStep`, `showStageCTA()` / `hideStageCTA()` / `openDetailFromStage()`, `detectStageType()`, `detectMethod()`, helper `stageEntity()` / `stageBox()` / `stageWrap()`, registry **`const STAGE_BUILDERS = {}` (kosong, key `<metode>/<tahap>`)**, `hideStageModel()`, `activateStageSwap()`, `fitStageGltf()`, `showStageModel()` |
-| Isi 21 model tahap (per metode) | `public/learn/stages/<metode>/<tahap>.js` (**21 file** = 3 metode × 7 tahap, 33–417 baris) | `STAGE_BUILDERS["<metode>/<tahap>"] = function () { ... }` — mis. `waterfall/design`, `agile/design`, `rad/design` (awalnya isi identik, boleh beda per metode) |
+| Elemen & CSS | `public/learn/ar.html` (**1344 baris**) | `<div id="stage-cta">`, CSS `#stage-cta` / `.stage-cta-detail` / `.stage-cta-close`, entity `#stage-entity` |
+| Logika inti (**hub**) | `public/learn/stage-models.js` (**525 baris**) | state `stageToken` + `stageStep`, `showStageCTA()` / `hideStageCTA()` / `openDetailFromStage()`, `detectStageType()` (aware metode), `detectMethod()`, helper `stageEntity()` / `stageBox()` / `stageWrap()`, **`stageKit()`** (palet + `frame`/`part`/`callout`/`tag` + prop bersama `person`/`screen`/`board`/`doc`/`bubble`/`server`/`cloud`/`rocket`/`bug`/`check`/`arrow`), registry **`const STAGE_BUILDERS = {}` (kosong, key `<metode>/<tahap>`)**, `hideStageModel()`, `activateStageSwap()`, `fitStageGltf()`, `showStageModel()` |
+| Isi 16 model tahap | `public/learn/stages/<metode>/<tahap>.js` (**16 file** = RAD 4 + Agile 7 + Waterfall 5, 89–343 baris, total 1956 baris) | `STAGE_BUILDERS["<metode>/<tahap>"] = function () { ... }` — mis. `rad/cutover`, `agile/launch`, `waterfall/testing` (nama tahap = spesifikasi `docs/Rancangan_Isi_Model_3D_Tahapan_SDLC.docx`) |
 
-**Urutan `<script>` di ar.html (baris 348–369):** `stage-models.js` (hub) → 21 file builder `stages/waterfall/*.js` (baris 349–355) → `stages/agile/*.js` (baris 356–362) → `stages/rad/*.js` (baris 363–369) → script inline utama ar.html (baris 370). Hub **wajib dimuat duluan** karena dialah yang mendeklarasikan `STAGE_BUILDERS`, dan semua **wajib sebelum** script inline — urutan ini yang menjamin 21 model siap dipakai `showStageModel()`. Seluruh fungsi di atas menjadi global sehingga `ar.html` bisa memanggilnya.
+**Urutan `<script>` di ar.html (baris 348–364):** `stage-models.js` (hub) → 16 file builder `stages/waterfall/*.js` (baris 349–353) → `stages/agile/*.js` (baris 354–360) → `stages/rad/*.js` (baris 361–364) → script inline utama ar.html (baris 365–1342). Hub **wajib dimuat duluan** karena dialah yang mendeklarasikan `STAGE_BUILDERS`, dan semua **wajib sebelum** script inline — urutan ini yang menjamin 16 model siap dipakai `showStageModel()`. Seluruh fungsi di atas menjadi global sehingga `ar.html` bisa memanggilnya.
 
 **Alur singkat:**
 
@@ -222,22 +222,31 @@ Tombol "✕" aksi → keluar mode tahap → model utama tampil kembali
 | Prioritas | Sumber | Cara kerja |
 | --- | --- | --- |
 | 1 | **GLB dari database** | Kolom opsional `stageModelUrl` pada tabel `method_steps`, diisi lewat form admin `/admin/steps` (label: *"Stage Model URL (opsional — GLB 3D tahap di R2)"*). File GLB disimpan di R2 (`https://models.byvictech.site/models/stages/...`); yang masuk database hanya URL-nya. |
-| 2 | **Model hardcode** | Dibangun dari kode A-Frame primitives di **`public/learn/stages/<metode>/<tahap>.js`** (21 file = 7 tahap × 3 metode), yang mendaftarkan dirinya ke registry `STAGE_BUILDERS["<metode>/<tahap>"]` di `stage-models.js` — tidak memakai file GLB sama sekali. Dipakai bila URL kosong atau GLB gagal dimuat. |
+| 2 | **Model hardcode** | Dibangun dari kode A-Frame primitives di **`public/learn/stages/<metode>/<tahap>.js`** (16 file = RAD 4 + Agile 7 + Waterfall 5), yang mendaftarkan dirinya ke registry `STAGE_BUILDERS["<metode>/<tahap>"]` di `stage-models.js` — tidak memakai file GLB sama sekali. Dipakai bila URL kosong atau GLB gagal dimuat. |
 | 3 | **Perilaku lama** | Bila keduanya tidak tersedia (`showStageModel()` mengembalikan `false`): model utama tetap terlihat dan **popup terbuka langsung** tanpa tombol aksi (persis seperti versi sebelumnya). |
 
-**7 jenis model hardcode** — dipilih oleh fungsi `detectStageType()` berdasarkan kata kunci di nama mesh (urutan deteksi dari atas ke bawah):
+**16 jenis model hardcode** — dipilih oleh fungsi `detectStageType()` yang **aware metode** (nama mesh diterima `detectMethod()` dulu lewat prefix `RAD_` / `AG_` / `WF_`, baru kata kunci tahap cocokkan di dalam metode tersebut — RAD `DESIGN` ≠ Waterfall `DESIGN`):
 
-| Kata kunci pada nama mesh | Jenis | Bentuk model |
-| --- | --- | --- |
-| `MAINTENANCE` | maintenance | dua roda gigi |
-| `REVIEW` / `FEEDBACK` | review | papan kanban |
-| `DEPLOY` / `CUTOVER` / `LAUNCH` / `RELEASE` | deployment | roket + api |
-| `TEST` | testing | dokumen + bug + kaca pembesar |
-| `IMPLEMENT` / `DEVELOP` / `CONSTRUCTION` / `CODING` | coding | monitor + keyboard |
-| `DESIGN` | design | blueprint + kubus wireframe + pensil |
-| `REQUIREMENT` / `ANALYS` / `PLANN` | requirements | papan klip + kaca pembesar |
+| Metode | Kata kunci pada nama mesh | Slug (`<metode>/<tahap>`) | Bentuk model (ringkas) |
+| --- | --- | --- | --- |
+| RAD | `REQUIREMENT` / `PLANN` | `rad/requirements-planning` | papan "?" + orang menunjuk, dokumen scope berbatas, daftar centang, dokumen approval + stempel |
+| RAD | `DESIGN` | `rad/user-design` | meja blueprint + kubus wireframe + pensil (4 zona callout — isi asli dipertahankan) |
+| RAD | `DEVELOP` / `CONSTRUCTION` | `rad/construction` | monitor kode + programmer, modul puzzle menyatu, daftar centang + kutu, umpan balik + jempol |
+| RAD | `IMPLEMENT` / `CUTOVER` | `rad/cutover` | lemari arsip → server, layar final test, pelatih + pendengar, roket go live |
+| Agile | `PLAN` / `BACKLOG` | `agile/plan` | papan backlog + kartu, kartu prioritas 1-2-3, meja rapat stakeholder |
+| Agile | `DESIGN` | `agile/design` | layar wireframe, desainer + palet warna, diagram simpul UI-API-DB |
+| Agile | `DEVELOP` | `agile/develop` | monitor kode + programmer, diagram cabang `main`/`dev`, dua orang satu layar |
+| Agile | `TEST` | `agile/test` | kartu kode + centang, kutu + alat perbaikan, penguji + kaca pembesar |
+| Agile | `DEPLOY` | `agile/deploy` | server "Staging", paket rilis → awan, awan + panah data |
+| Agile | `REVIEW` | `agile/review` | presenter + grafik, gelembung + jempol, pankan "IMPROVE" + panah melingkar |
+| Agile | `LAUNCH` / `RELEASE` | `agile/launch` | roket rilis + bendera versi, orang memakai aplikasi, dashboard monitoring (menunggu step DB `AG_LAUNCH`) |
+| Waterfall | `REQUIREMENT` / `ANALYS` | `waterfall/requirements-analysis` | papan wawancara, timbangan feasibility, dokumen SRS tebal |
+| Waterfall | `DESIGN` | `waterfall/design` | rantai Frontend-API-Backend, silinder DB + ERD, layar UI + ponsel |
+| Waterfall | `DEVELOP` | `waterfall/development` | terminal + programmer, modul terpisah M1–M3, dua modul disatukan |
+| Waterfall | `TEST` | `waterfall/testing` | papan test case, kutu + tiket laporan, layar system testing + kaca pembesar |
+| Waterfall | `MAINTENANCE` | `waterfall/maintenance` | kunci inggris + obeng, panah versi v1.0→v2.0, petugas headset |
 
-Bentuk model tiap baris di atas ditulis di file sendiri per metode: **`public/learn/stages/<metode>/<tahap>.js`** — `requirements` 33, `design` 346, `coding` 417, `testing` 346, `deployment` 407, `maintenance` 385, `review` 202 baris (berlaku sama untuk ketiga metode; total 21 file). Tiap file mendaftarkan dirinya ke registry, misalnya `STAGE_BUILDERS["rad/design"] = function () { ... }` — isi tiap metode boleh diedit berbeda satu sama lain.
+Bentuk model tiap baris ditulis di file sendiri: **`public/learn/stages/<metode>/<tahap>.js`** — RAD (`requirements-planning` 112, `user-design` 343, `construction` 111, `cutover` 123 baris), Agile (`plan` 91, `design` 110, `develop` 112, `test` 96, `deploy` 100, `review` 96, `launch` 125), Waterfall (`requirements-analysis` 89, `design` 129, `development` 99, `testing` 94, `maintenance` 126) — total 16 file / 1956 baris. Tiap file memakai kit bersama `stageKit()` dari hub (tanpa duplikasi helper), lalu mendaftarkan diri ke registry, misalnya `STAGE_BUILDERS["rad/cutover"] = function () { ... }`.
 
 **Sifat model tahap:**
 
@@ -254,8 +263,8 @@ Bentuk model tiap baris di atas ditulis di file sendiri per metode: **`public/le
 
 **Fungsi terkait:**
 
-- **Hub — `public/learn/stage-models.js` (206 baris, dimuat duluan):** `detectStageType()`, `detectMethod()`, `stageEntity()`, `stageBox()`, `stageWrap()`, `STAGE_BUILDERS` (registry), `hideStageModel()`, `activateStageSwap()`, `fitStageGltf()`, `showStageModel(step, meshName)` (**return boolean**), `showStageCTA()`, `hideStageCTA()`, `openDetailFromStage()`.
-- **Isi builder — `public/learn/stages/<metode>/<tahap>.js` (21 file, dimuat setelah hub):** `STAGE_BUILDERS["waterfall/…"]`, `STAGE_BUILDERS["agile/…"]`, `STAGE_BUILDERS["rad/…"]` — masing-masing 7 tahap (requirements, design, coding, testing, deployment, maintenance, review), satu fungsi tanpa parameter yang mengembalikan entity A-Frame.
+- **Hub — `public/learn/stage-models.js` (525 baris, dimuat duluan):** `detectStageType()` (aware metode), `detectMethod()`, `stageEntity()`, `stageBox()`, `stageWrap()`, `stageKit()` (kit diorama bersama), `STAGE_BUILDERS` (registry), `hideStageModel()`, `activateStageSwap()`, `fitStageGltf()`, `showStageModel(step, meshName)` (**return boolean**), `showStageCTA()`, `hideStageCTA()`, `openDetailFromStage()`.
+- **Isi builder — `public/learn/stages/<metode>/<tahap>.js` (16 file, dimuat setelah hub):** `STAGE_BUILDERS["rad/…"]` (4 tahap: requirements-planning, user-design, construction, cutover), `STAGE_BUILDERS["agile/…"]` (7 tahap: plan, design, develop, test, deploy, review, launch), `STAGE_BUILDERS["waterfall/…"]` (5 tahap: requirements-analysis, design, development, testing, maintenance) — satu fungsi tanpa parameter yang mengembalikan entity A-Frame, mengikuti gaya label callout + garis penunjuk tahap User Design.
 
 **Sambungan dengan alur klik:**
 
