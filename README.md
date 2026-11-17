@@ -17,6 +17,7 @@ Aplikasi WebAR yang memungkinkan pengguna memindai marker AR untuk melihat model
 - [Caching Strategy](#caching-strategy)
 - [Struktur Proyek](#struktur-proyek)
 - [Peta Lengkap File &amp; Hubungan Antar-File](#peta-lengkap-file--hubungan-antar-file)
+- [Peta Tampilan ke File](#peta-tampilan-ke-file)
 - [Environment Variables](#environment-variables)
 - [Instalasi &amp; Setup](#instalasi--setup)
 - [Deploy ke Vercel](#deploy-ke-vercel)
@@ -492,6 +493,47 @@ Isinya:
 5. **Referensi file per folder** — SEMUA file: fungsi, tipe, hubungan ke file lain
 6. **Tabel hubungan file ↔ file** — termasuk 2 "jembatan" kritis (`meshName` & `mindTargetIndex`)
 7. **Kode mati & catatan teknis** — file yang tidak dipakai + 10 catatan penting
+
+---
+
+## Peta Tampilan ke File
+
+Referensi cepat untuk laporan: **setiap tampilan/halaman aplikasi dan file
+tempat kodenya berada.**
+
+### Aplikasi Pengguna
+
+| No | Tampilan | Route | File Kode |
+|----|----------|-------|-----------|
+| 1 | Splash / landing (judul + tombol Mulai) | `/` | `app/page.tsx` |
+| 2 | Menu utama (2 kartu: Mulai Belajar & Panduan) | `/home` | `app/home/page.tsx` |
+| 3 | Daftar metode (kartu Waterfall/Agile/RAD + dialog unduh model) | `/home/mulai-belajar` | `app/home/mulai-belajar/page.tsx`, `app/home/mulai-belajar/MethodCard.tsx`, `components/ModelPreloader.tsx` |
+| 4 | Halaman panduan (6 langkah pemakaian) | `/home/panduan` | `app/home/panduan/page.tsx` |
+| 5 | **Halaman AR** — scan marker, model 3D, gesture, klik tahap, popup materi + TTS, tombol aksi | `/learn/ar.html?method=...` (dibuka via `/learn/<slug>`) | `public/learn/ar.html` (scene, raycaster, gesture, popup, tombol aksi) |
+| 6 | Redirect metode → halaman AR | `/learn/<slug>` | `app/learn/[slug]/page.tsx` |
+| 7 | **Model 3D per tahap** (diorama pengganti model utama saat tahap diklik) | — (dimuat oleh ar.html) | `public/learn/stage-models.js` (hub + deteksi tipe) dan `public/learn/stages/*.js` (7 file: requirements, design, coding, testing, deployment, maintenance, review) |
+
+### Panel Admin
+
+| No | Tampilan | Route | File Kode |
+|----|----------|-------|-----------|
+| 8 | Login admin | `/admin/login` | `app/admin/login/page.tsx` |
+| 9 | Layout admin (sidebar navigasi) | semua route `/admin/*` | `app/admin/layout.tsx`, `components/admin/AdminLayout.tsx`, `components/admin/AdminSidebar.tsx` |
+| 10 | Dashboard (statistik + quick actions) | `/admin` | `app/admin/page.tsx` |
+| 11 | Kelola Metode (tabel + form tambah/edit) | `/admin/methods` | `app/admin/methods/page.tsx`, `app/admin/methods/MethodsTable.tsx` |
+| 12 | Kelola Tahapan (tabel + form, termasuk field Stage Model URL) | `/admin/steps` | `app/admin/steps/page.tsx`, `app/admin/steps/StepsTable.tsx` |
+
+> **Catatan:** menu **Users** sudah dihapus dari sidebar dan dashboard admin.
+> Halaman lama `/admin/users` (`app/admin/users/`) masih ada di repo tetapi
+> tidak lagi ditautkan dari menu mana pun.
+
+### Komponen Pendukung
+
+| Kelompok | File | Fungsi |
+|----------|------|--------|
+| Komponen admin bersama | `components/admin/PageHeader.tsx`, `StatCard.tsx`, `FormField.tsx`, `StatusBadge.tsx`, `EmptyState.tsx`, `DeleteDialog.tsx`, `DataTablePagination.tsx`, `SearchInput.tsx`, `Toolbar.tsx`, `AdminNavbar.tsx` | Header halaman, kartu statistik, field form, badge status, dialog — dipakai halaman Methods & Steps |
+| Komponen UI dasar (shadcn/Tailwind) | `components/ui/*.tsx` (button, dialog, table, input, select, badge, dll.) | Building block UI panel admin |
+| Kode AR React lama (**tidak dipakai di produksi**) | `components/ar/ARViewer.tsx`, `components/ar/StepPopup.tsx`, `ar/`, `stores/` | Sisa implementasi lama — AR produksi memakai `public/learn/ar.html` |
 
 ---
 

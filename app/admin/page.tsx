@@ -81,13 +81,6 @@ export default function DashboardPage() {
               desc: "Configure learning steps",
               color: "bg-indigo-600",
             },
-            {
-              href: "/admin/users",
-              icon: Users,
-              label: "Manage Users",
-              desc: "Admin user accounts",
-              color: "bg-violet-600",
-            },
           ].map((item) => (
             <a
               key={item.href}

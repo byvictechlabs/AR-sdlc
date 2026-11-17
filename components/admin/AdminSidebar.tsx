@@ -7,7 +7,6 @@ import {
   LayoutDashboard,
   BookOpen,
   Layers,
-  Users,
   PanelLeftClose,
   PanelLeft,
   Box,
@@ -18,7 +17,6 @@ const navItems = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { label: "Methods", href: "/admin/methods", icon: BookOpen },
   { label: "Steps", href: "/admin/steps", icon: Layers },
-  { label: "Users", href: "/admin/users", icon: Users },
 ];
 
 interface AdminSidebarProps {
@@ -129,6 +127,7 @@ export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
 
         {/* Logout */}
         {!collapsed && (
+          // eslint-disable-next-line @next/next/no-html-link-for-pages -- logout perlu navigasi penuh ke route API
           <a
             href="/api/auth/logout"
             className="mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium text-slate-500 transition-colors duration-200 hover:text-red-400 hover:bg-red-500/10"
