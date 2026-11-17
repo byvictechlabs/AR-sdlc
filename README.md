@@ -18,6 +18,7 @@ Aplikasi WebAR yang memungkinkan pengguna memindai marker AR untuk melihat model
 - [Struktur Proyek](#struktur-proyek)
 - [Peta Lengkap File &amp; Hubungan Antar-File](#peta-lengkap-file--hubungan-antar-file)
 - [Peta Tampilan ke File](#peta-tampilan-ke-file)
+- [Peta Fungsi ke File](#peta-fungsi-ke-file)
 - [Environment Variables](#environment-variables)
 - [Instalasi &amp; Setup](#instalasi--setup)
 - [Deploy ke Vercel](#deploy-ke-vercel)
@@ -219,7 +220,7 @@ File GLB (3D Model)              Database (method_steps)
   │         │     download model   │
   │         │     dari R2/cache    │
   │         │  5. Model muncul →   │
-  │         │     auto-rotate      │
+  │         │     siap diketuk     │
   │         │  6. User ketuk mesh  │
   │         │     → model tahap    │
   │         │     → tombol aksi    │
@@ -232,7 +233,7 @@ File GLB (3D Model)              Database (method_steps)
 /admin/login ──── Login admin
 /admin/methods ──── CRUD metode SDLC
 /admin/steps ──── CRUD tahapan
-/admin/users ──── CRUD users
+/admin/users ──── CRUD users (halaman lama — tak lagi ada di menu)
 ```
 
 ---
@@ -530,6 +531,75 @@ tempat kodenya berada.**
 | Komponen admin bersama | `components/admin/PageHeader.tsx`, `StatCard.tsx`, `FormField.tsx`, `StatusBadge.tsx`, `EmptyState.tsx`, `DeleteDialog.tsx`, `DataTablePagination.tsx`, `SearchInput.tsx`, `Toolbar.tsx`, `AdminNavbar.tsx` | Header halaman, kartu statistik, field form, badge status, dialog — dipakai halaman Methods & Steps |
 | Komponen UI dasar (shadcn/Tailwind) | `components/ui/*.tsx` (button, dialog, table, input, select, badge, dll.) | Building block UI panel admin |
 | Kode AR React lama (**tidak dipakai di produksi**) | `components/ar/ARViewer.tsx`, `components/ar/StepPopup.tsx`, `ar/`, `stores/` | Sisa implementasi lama — AR produksi memakai `public/learn/ar.html` |
+
+---
+
+## Peta Fungsi ke File
+
+Referensi cepat: **mau ubah fungsi X → edit file mana.**
+(Versi "tampilan → file" ada di atas; ini versi **fungsi → file**.)
+
+### 1. Pindah Halaman (Navigasi)
+
+| Dari → Ke | Lokasi kode | Catatan |
+|-----------|-------------|---------|
+| `/` → `/home` | `app/page.tsx` (tombol `href="/home"`) | landing page |
+| `/home` → `/home/mulai-belajar` & `/home/panduan` | `app/home/page.tsx` | menu utama |
+| `/home/panduan` → `/home` | `app/home/panduan/page.tsx` (tombol "⬅ Kembali") | |
+| Pilih metode → halaman AR | `app/home/mulai-belajar/MethodCard.tsx` — `window.location.href = "/learn/ar.html?method=" + slug` | langsung ke HTML statis |
+| `/learn/<slug>` → `/learn/ar.html?method=…` | `app/learn/[slug]/page.tsx` (`redirect()`) | akses langsung via URL |
+| Tombol "⬅ Kembali" di halaman AR → `/home/mulai-belajar` | `public/learn/ar.html` (elemen `<div id="ui-top">`) | |
+| Navigasi panel admin (sidebar) | `components/admin/AdminSidebar.tsx` + `app/admin/layout.tsx` | |
+| Jaga route `/admin/*` (wajib login) | `middleware.ts` + `lib/auth.ts` | redirect ke `/admin/login` |
+| Proses login admin | `app/admin/login/page.tsx` → `app/api/auth/[...nextauth]/route.ts` → `lib/auth.ts` | NextAuth credentials |
+
+### 2. Ngambil Data (API → Database)
+
+| Kebutuhan | Lokasi kode | Alur |
+|-----------|-------------|------|
+| Halaman AR ambil data metode + tahapan | `public/learn/ar.html` → `loadFromDB()` | `fetch("/api/methods/by-slug/" + slug)` → disimpan di `methodCfg` & `stepsData` |
+| Endpoint data yang dipakai AR | `app/api/methods/by-slug/[slug]/route.ts` | validasi → query Drizzle |
+| Admin kelola metode (tabel + CRUD) | `app/admin/methods/MethodsTable.tsx` | `fetch("/api/methods")` + POST/PUT/DELETE `/api/methods[/{id}]` |
+| Admin kelola tahapan (tabel + CRUD) | `app/admin/steps/StepsTable.tsx` | `fetch("/api/steps")` + `/api/steps[/{id}]` |
+| Statistik dashboard admin | `app/admin/page.tsx` | `fetch("/api/dashboard/stats")` |
+| Semua endpoint CRUD lain | `app/api/methods/`, `app/api/steps/`, `app/api/users/`, `app/api/dashboard/stats/` | validasi Zod (`schemas/index.ts`) + `handleApiError` (`lib/api-error.ts`) + status HTTP benar |
+| Koneksi database (Turso) + schema Drizzle | `db/index.ts`, `db/schema/*.ts` | `db/schema/steps.ts` berisi `mesh_name` & `stage_model_url` — jembatan mesh 3D ↔ konten |
+| Seed data awal (admin + metode + tahapan) | `db/seed.ts` | dijalankan saat setup |
+| Migrasi schema | `db/migrate.ts` | |
+
+### 3. Scan & Baca AR (kamera, marker, klik mesh)
+
+Semua fungsi di bawah berada di **`public/learn/ar.html`** kecuali ditandai lain.
+
+| Fungsi | Lokasi kode |
+|--------|-------------|
+| Tombol "Mulai Kamera" → nyalakan MindAR | `startAR()` — cek HTTPS dulu, lalu `mindar-image-system.start()` |
+| Konfigurasi engine MindAR (CDN 1.2.5) + path marker | atribut `<a-scene mindar-image="...">` |
+| Berkas marker (yang di-print) | `public/markers/targets.mind` — cara membuatnya: bagian *Setup MindAR Markers* di bawah |
+| Pilih marker sesuai metode (field DB `mindTargetIndex`) | `applyTargetIndex(idx)` |
+| Event marker ketemu / hilang | listener `targetFound` & `targetLost` di `init()`; **`patchTargetFreeze()`** membekukan pose terakhir saat marker hilang → model tetap tampil walau kamera menjauh |
+| Muat model 3D utama (lazy, setelah marker terdeteksi) | `loadModelFromCache()` → cache `ar-models-v1` → event `model-loaded` → `normalizeModel()` |
+| Deteksi ketukan di bagian mesh | `findStageNameAt()` (posisi layar vs bounding-sphere) → `handleClick()` |
+| Nama mesh → konten tahap | `stepsData[meshName]` → `showStageModel()` di `public/learn/stage-models.js` |
+| Model 3D per tahap (diorama) | `public/learn/stages/<metode>/<tahap>.js` (16 builder) + hub `public/learn/stage-models.js` |
+
+### 4. Interaksi di Halaman AR
+
+| Fungsi | Lokasi kode |
+|--------|-------------|
+| Gesture putar / zoom / geser | `setupGestures()` — **kode milik user, jangan diubah tanpa izin** |
+| Tombol "⟲ Reset" tampilan | `resetView()` |
+| Popup materi (buka / tutup) | `openPopup()` / `closePopup()` |
+| TTS "▶ Dengarkan" materi | `toggleAudio()` / `stopAudio()` (`window.speechSynthesis`) |
+| Tombol aksi model tahap ("📋 Lihat Penjelasan" / "✕") | `showStageCTA()` / `hideStageCTA()` / `openDetailFromStage()` di `public/learn/stage-models.js` |
+
+### 5. Caching & Service Worker
+
+| Fungsi | Lokasi kode |
+|--------|-------------|
+| Sumber Service Worker (precache app shell + cache GLB 30 hari) | `app/sw.ts` (Serwist) — di-build ke `public/sw.js` |
+| Pendaftaran SW di halaman AR | `public/learn/ar.html` — `navigator.serviceWorker.register("/sw.js")` |
+| Cache model AR (`ar-models-v1`) | `public/learn/ar.html` — `caches.open(...)` di `loadFromDB()` + `loadModelFromCache()` |
 
 ---
 
