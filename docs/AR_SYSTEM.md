@@ -252,19 +252,20 @@ Bentuk model tiap baris ditulis di file sendiri: **`public/learn/stages/<metode>
 
 - **Ikut gesture** (putar / zoom / geser) karena entity model tahap berada di dalam `#pivot`, bersama model utama.
 - **Auto-fit**: ukuran GLB tahap disesuaikan otomatis ke ukuran standar (`fitStageGltf()`), sama seperti normalisasi model utama.
-- Model tahap memakai **platform dasar + grup animasi putar pelan 16 detik** (`stageWrap()`), sehingga tampilan selaras dengan model utama.
+- Model tahap memakai **platform dasar + grup STASIS** (`stageWrap()` — **tanpa putar otomatis**; putar/geser hanya lewat gesture user, konsisten dengan model utama yang juga tidak berputar sendiri).
 - Pembentukan model: `stageEntity()` (wadah) dan `stageBox()` (kotak ukuran) untuk mode hardcode.
 - Selama mode tahap aktif, **ketukan bebas di scene diabaikan** — pengguna memakai tombol aksi.
 
 **Pembatalan aman (anti-race):**
 
-- `stageToken` (penghitung token) **dinaikkan saat keluar mode tahap** (tombol `✕` aksi atau `targetLost`) — bukan saat popup ditutup — sehingga proses load GLB tahap yang belum selesai otomatis batal dan respons lambat tidak menampilkan model yang sudah tidak diminta.
-- Marker hilang (`targetLost`) → `closePopup()` lalu `hideStageModel()` → **membersihkan model tahap dan tombol aksi sekaligus**.
+- `stageToken` (penghitung token) **dinaikkan saat keluar mode tahap** (tombol `✕` aksi saja) — bukan saat popup ditutup — sehingga proses load GLB tahap yang belum selesai otomatis batal dan respons lambat tidak menampilkan model yang sudah tidak diminta.
+- **Marker hilang (`targetLost`) TIDAK menyembunyikan apa pun** (perubahan sesuai permintaan user): pose model dibekukan oleh `patchTargetFreeze()` di `ar.html` — model 3D, popup, dan tombol aksi tetap tampil & interaktif; `isTracking` tetap `true` supaya klik mesh masih berfungsi. Saat marker terdeteksi lagi, MindAR mengunci ulang model ke posisi marker.
 
 **Fungsi terkait:**
 
 - **Hub — `public/learn/stage-models.js` (525 baris, dimuat duluan):** `detectStageType()` (aware metode), `detectMethod()`, `stageEntity()`, `stageBox()`, `stageWrap()`, `stageKit()` (kit diorama bersama), `STAGE_BUILDERS` (registry), `hideStageModel()`, `activateStageSwap()`, `fitStageGltf()`, `showStageModel(step, meshName)` (**return boolean**), `showStageCTA()`, `hideStageCTA()`, `openDetailFromStage()`.
 - **Isi builder — `public/learn/stages/<metode>/<tahap>.js` (16 file, dimuat setelah hub):** `STAGE_BUILDERS["rad/…"]` (4 tahap: requirements-planning, user-design, construction, cutover), `STAGE_BUILDERS["agile/…"]` (7 tahap: plan, design, develop, test, deploy, review, launch), `STAGE_BUILDERS["waterfall/…"]` (5 tahap: requirements-analysis, design, development, testing, maintenance) — satu fungsi tanpa parameter yang mengembalikan entity A-Frame, mengikuti gaya label callout + garis penunjuk tahap User Design.
+- **`patchTargetFreeze()` — di `public/learn/ar.html` (fungsi `init()`):** mem-patch `updateWorldMatrix` komponen `mindar-image-target` MindAR agar `targetLost` **membekukan pose terakhir** (visible & matrix tidak disentuh) alih-alih menyembunyikan model; event `targetFound`/`targetLost` tetap dikirim seperti biasa, jadi seluruh alur aplikasi tidak berubah. Dipanggil saat init, saat scene `loaded`, dan sebagai jaring pengaman di listener `targetFound`.
 
 **Sambungan dengan alur klik:**
 
@@ -279,8 +280,11 @@ tombol "📋 Lihat Penjelasan" → openDetailFromStage() → openPopup()
                                 (openPopup menyembunyikan tombol aksi)
 closePopup()                 → bila stageStep ada → showStageCTA() lagi
                                 (model tahap TETAP tampil)
-tombol "✕" aksi / targetLost → hideStageModel()   (keluar mode tahap:
+tombol "✕" aksi           → hideStageModel()   (keluar mode tahap:
                                 bersihkan stageStep + tombol aksi + token)
+targetLost                → TIDAK menyembunyikan apa pun — pose model
+                                dibekukan (patchTargetFreeze di ar.html);
+                                marker terlihat lagi → kunci ulang ke marker
 ```
 
 **Entity:** `<a-entity id="stage-entity" visible="false">` adalah **saudara** `#model-entity` di dalam `#pivot` (bagian scene A-Frame).
@@ -329,7 +333,7 @@ Saat mode tahap aktif, pengguna **tidak langsung** membuka popup. Layar menampil
 | 3 | Tutup popup (✕ popup / backdrop) | Popup hilang, **model tahap tetap tampil**, tombol aksi muncul lagi |
 | 4 | Klik tombol **"✕"** aksi | Keluar dari mode tahap → model utama tampil kembali |
 | 5 | Fallback: mesh tanpa model tahap (URL kosong & builder tak ditemukan) | Popup terbuka **langsung** tanpa tombol (perilaku lama) |
-| 6 | Ketuk bebas di scene selama mode tahap aktif | Diabaikan (guard `if (stageStep) return;`) — gunakan tombol. Marker hilang (`targetLost`) → membersihkan model tahap **dan** tombol aksi sekaligus |
+| 6 | Ketuk bebas di scene selama mode tahap aktif | Diabaikan (guard `if (stageStep) return;`) — gunakan tombol. Marker hilang (`targetLost`) → **tidak membersihkan apa pun** — pose dibekukan, model + tombol aksi tetap tampil |
 | 7 | Mode URL: tombol diklik saat GLB masih loading | Tombol tetap bisa diklik; model tampil begitu selesai dimuat |
 
 **State & fungsi baru:**
@@ -348,7 +352,7 @@ Saat mode tahap aktif, pengguna **tidak langsung** membuka popup. Layar menampil
 | `closePopup()` | **Tidak lagi** menyembunyikan model tahap; justru menampilkan lagi tombol aksi bila `stageStep` ada |
 | `handleClick()` | Guard `if (stageStep) return;` + percabangan `if (showStageModel(...)) showStageCTA(); else openPopup(...)` |
 | `hideStageModel()` | Membersihkan `stageStep` + tombol aksi |
-| `targetLost` | `closePopup()` lalu `hideStageModel()` |
+| `targetLost` | **Tidak menyembunyikan apa pun** (perubahan sesuai permintaan user): pose dibekukan oleh `patchTargetFreeze()` dan `isTracking` tetap `true` — `closePopup()`/`hideStageModel()` tidak lagi dipanggil dari sini |
 
 **Catatan file split:** `hideStageModel()` kini berada di `public/learn/stage-models.js`, sedangkan `openPopup()`, `closePopup()`, `handleClick()`, dan `targetLost()` tetap di `public/learn/ar.html`. Keduanya saling memanggil sebagai fungsi global karena `stage-models.js` dimuat sebelum script inline ar.html.
 

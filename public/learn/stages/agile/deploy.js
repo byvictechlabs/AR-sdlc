@@ -70,7 +70,6 @@ STAGE_BUILDERS["agile/deploy"] = function () {
     part(Cz, "primitive: torus; radius: " + n(0.05) + "; radiusTubular: " + n(0.004) +
         "; segmentsRadial: 6; segmentsTubular: 24", CYAN, 0, 0.16, -0.05, {
         rx: 70, e: CYAN, ei: 0.7, op: 0.7,
-        anim: "property: rotation; to: 70 360 0; loop: true; dur: 7000; easing: linear",
     });
     arrow(Cz(0, 0.09, -0.05), Cz(0, 0.15, -0.05), CYAN, 0.006, { e: CYAN, ei: 0.9 });
     for (i = 0; i < 2; i++) {

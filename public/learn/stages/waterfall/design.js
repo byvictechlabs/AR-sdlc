@@ -41,7 +41,6 @@ STAGE_BUILDERS["waterfall/design"] = function () {
     C(Ap, 0.004, 0.05, SLATE, 0, 0.033, 0, { seg: 8 });
     part(Ap, "primitive: octahedron; radius: " + n(0.05), CYAN, 0, 0.1, 0, {
         wire: true, e: CYAN, ei: 0.6,
-        anim: "property: rotation; to: 0 360 0; loop: true; dur: 9000; easing: linear",
     });
     part(Ap, "primitive: octahedron; radius: " + n(0.024), MID, 0, 0.1, 0, { e: MID, ei: 0.5 });
     tag(Ap, "API", 0, 0.017, 0.055);

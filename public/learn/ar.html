@@ -1268,7 +1268,36 @@
                 setStatus("Arahkan kamera ke marker AR");
             });
 
+            // ===== FIX: model 3D tetap tampil walau kamera menjauh dari marker =====
+            // MindAR aslinya menyembunyikan target saat targetLost (visible=false +
+            // matrix dijadikan nol) sehingga model mendadak hilang begitu marker
+            // keluar dari bidang kamera. Dipatch: pose terakhir DIBEKUKAN — visible
+            // & matrix tidak disentuh — sehingga model, popup, dan tombol aksi tetap
+            // tampil dan bisa dipakai. Event targetFound/targetLost tetap dikirim
+            // seperti biasa; saat marker terlihat lagi, model kunci ulang ke marker.
+            function patchTargetFreeze() {
+                const comp = targetEl.components && targetEl.components["mindar-image-target"];
+                if (!comp || comp.__freezePatched) return;
+                const orig = comp.updateWorldMatrix;
+                comp.__freezePatched = true;
+                comp.__lost = false;
+                comp.updateWorldMatrix = function (m) {
+                    if (m === null) {
+                        if (!this.el.object3D.visible) return; // belum pernah terdeteksi → biarkan MindAR
+                        if (this.__lost) return;                // sudah beku → diabaikan
+                        this.__lost = true;
+                        this.el.emit("targetLost");             // TANPA menyembunyikan apa pun
+                        return;
+                    }
+                    if (this.__lost) { this.__lost = false; this.el.emit("targetFound"); }
+                    orig.call(this, m);
+                };
+                console.log("[AR] targetLost dipatch: pose dibekukan, model tetap tampil");
+            }
+            patchTargetFreeze(); // coba sekarang (komponen mungkin sudah siap)
+
             targetEl.addEventListener("targetFound", () => {
+                patchTargetFreeze(); // komponen pasti ada di titik ini — jaring pengaman
                 console.log("[AR] ========== TARGET FOUND ==========");
                 console.log("[AR] isTracking:", isTracking, "| modelLoaded:", modelLoaded, "| modelPath:", methodCfg.modelPath);
                 isTracking = true;
@@ -1283,10 +1312,13 @@
             });
 
             targetEl.addEventListener("targetLost", () => {
-                isTracking = false;
-                closePopup();
-                hideStageModel(); // marker hilang → model tahap & tombol aksi dibersihkan
-                setStatus("Arahkan kamera ke marker AR");
+                // FIX (permintaan user): marker keluar dari bidang kamera TIDAK
+                // menyembunyikan apa pun. Pose model dibekukan oleh patchTargetFreeze()
+                // — model 3D, popup, dan tombol aksi tetap tampil & interaktif;
+                // marker terdeteksi lagi → model kunci ulang ke posisi marker.
+                // isTracking TIDAK dimatikan supaya klik mesh tetap berfungsi.
+                console.log("[AR] TARGET LOST → model dibekukan (tetap tampil)");
+                setStatus("Ketuk bagian model untuk melihat penjelasan");
             });
 
             modelEl.addEventListener("model-loaded", () => {
@@ -1311,6 +1343,7 @@
 
             sceneEl.addEventListener("loaded", () => {
                 setStatus("Arahkan kamera ke marker AR");
+                patchTargetFreeze(); // komponen mindar-image-target pasti sudah init
                 setupGestures();
             });
 

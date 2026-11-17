@@ -19,7 +19,8 @@
  *   handleClick()   → showStageModel() + showStageCTA()
  *   openPopup()     → hideStageCTA()
  *   closePopup()    → showStageCTA() bila stageStep masih ada
- *   targetLost()    → closePopup() + hideStageModel()
+ *   targetLost()    → TIDAK menyembunyikan apa pun (pose dibekukan oleh
+ *                     patchTargetFreeze() di ar.html — model tetap tampil)
  *
  * Ketergantungan runtime (ada di ar.html):
  *   FIT_SIZE, AFRAME, resetView(), openPopup(),
@@ -101,11 +102,10 @@ function stageBox(w, h, d, color, position, extra) {
     }, extra || {}));
 }
 
-// Pembungkus wajib: platform dasar + grup berputar pelan (turntable)
+// Pembungkus wajib: platform dasar + grup STASIS (TANPA putar otomatis —
+// model tahap harus stabil; putar/geser hanya lewat gesture user)
 function stageWrap(children) {
-    const g = stageEntity({
-        animation: "property: rotation; to: 0 360 0; loop: true; dur: 16000; easing: linear",
-    });
+    const g = stageEntity({});
     g.appendChild(stageEntity({
         geometry: "primitive: cylinder; radius: 0.6; height: 0.05",
         material: "color: #e2e8f0; roughness: 0.85",

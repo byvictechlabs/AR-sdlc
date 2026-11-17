@@ -262,13 +262,11 @@ STAGE_BUILDERS["rad/user-design"] = function () {
         C(Ap, 0.004, 0.04, SLATE, 0, 0.032, 0, { seg: 8 });
         part(Ap, "primitive: octahedron; radius: " + n(0.045), CYAN, 0, 0.085, 0, {
             wire: true, e: CYAN, ei: 0.6,
-            anim: "property: rotation; to: 0 360 0; loop: true; dur: 9000; easing: linear",
         });
         part(Ap, "primitive: octahedron; radius: " + n(0.022), MID, 0, 0.085, 0, { e: MID, ei: 0.5 });
         part(Ap, "primitive: torus; radius: " + n(0.062) + "; radiusTubular: " + n(0.0025) +
             "; segmentsRadial: 6; segmentsTubular: 32", "#ffffff", 0, 0.085, 0, {
             rx: 72, e: "#ffffff", ei: 0.4,
-            anim: "property: rotation; to: 72 360 0; loop: true; dur: 6000; easing: linear",
         });
         tag(Ap, "API", 0, 0.013, 0.065);
         // Backend (rak server)
