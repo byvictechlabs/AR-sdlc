@@ -185,7 +185,7 @@ File GLB (3D Model)              Database (method_steps)
 
 - Nama mesh di GLB **harus sama persis** dengan `meshName` di database
 - Jika tidak match, mesh bisa diklik tapi tidak ada penjelasan yang muncul
-- Mesh names mengikuti konvensi: `[METODE]_[TAHAP]` (contoh: `AG_PLAN`, `WF_REQUIREMENTS`)
+- Mesh names mengikuti konvensi: `[METODE]_[TAHAP]` (contoh: `AG_PLAN`, `WF_REQUIREMENT`)
 
 ---
 
@@ -309,8 +309,8 @@ resolveMeshName(object)
 ### Apa itu Stage Model?
 
 Saat pengguna memindai marker, yang muncul pertama adalah **model utama** — satu file
-GLB per metode (`waterfall1.glb`, `agile-new.glb`, `RAD.glb`) yang berisi seluruh tahapan
-metode itu.
+GLB per metode (mis. `waterfallD.glb`, `agileD.glb`, `RAD2.glb` di Cloudflare R2; URL
+finalnya diatur dari admin) yang berisi seluruh tahapan metode itu.
 
 Ketika salah satu bagian model diketuk, aplikasi **menyembunyikan model utama** dan
 menampilkan **diorama khusus untuk tahap tersebut** di atas marker. Diorama itulah yang
@@ -319,11 +319,11 @@ disebut **stage model**.
 ```
 Model utama (1 GLB per metode)          Stage model (1 diorama per tahap)
 ┌───────────────────────────┐           ┌───────────────────────────┐
-│  WF_REQUIREMENTS          │  diketuk  │  meja wawancara +          │
-│  WF_DESIGN                │  ───────▶ │  timbangan studi kelayakan │
-│  WF_IMPLEMENTATION        │           │  + dokumen SRS             │
-│  WF_TESTING               │           │                           │
-│  WF_MAINTENANCE           │           │  (dibangun dari kode,      │
+│  WF_REQUIREMENT            │  diketuk  │  meja wawancara +          │
+│  WF_DESIGN                 │  ───────▶ │  timbangan studi kelayakan │
+│  WF_DEVELOPMENT            │           │  + dokumen SRS             │
+│  WF_TEST                   │           │                           │
+│  WF_MAINTENANCE            │           │  (dibangun dari kode,      │
 └───────────────────────────┘           │   bukan file GLB)          │
                                         └───────────────────────────┘
 ```
@@ -383,27 +383,28 @@ lalu 16 file mengisi registry itu.
 
 Setiap file mendaftarkan dirinya dengan **key `<metode>/<tahap>`**:
 
-| Metode | File | Key builder | Diorama berisi (label callout) | Baris | Mesh pemicu (contoh) |
+| Metode | File | Key builder | Diorama berisi (label callout) | Baris | Mesh pemicu (nama di GLB) |
 |---|---|---|---|---|---|
-| Waterfall | `requirements-analysis.js` | `waterfall/requirements-analysis` | Requirement Gathering, Feasibility Study, SRS Document | 89 | `WF_REQUIREMENTS` |
+| Waterfall | `requirements-analysis.js` | `waterfall/requirements-analysis` | Requirement Gathering, Feasibility Study, SRS Document | 89 | `WF_REQUIREMENT` |
 | Waterfall | `design.js` | `waterfall/design` | System Architecture, Database Design, UI Design | 128 | `WF_DESIGN` |
-| Waterfall | `development.js` | `waterfall/development` | Coding, Module Development, Integration | 99 | `WF_IMPLEMENTATION`, `WF_DEVELOPMENT` |
-| Waterfall | `testing.js` | `waterfall/testing` | Test Case, Bug Reporting, System Testing | 94 | `WF_TESTING` |
+| Waterfall | `development.js` | `waterfall/development` | Coding, Module Development, Integration | 99 | `WF_DEVELOPMENT` |
+| Waterfall | `testing.js` | `waterfall/testing` | Test Case, Bug Reporting, System Testing | 94 | `WF_TEST` |
 | Waterfall | `maintenance.js` | `waterfall/maintenance` | Bug Fixing, Updates, User Support | 126 | `WF_MAINTENANCE` |
-| Agile | `plan.js` | `agile/plan` | Product Backlog, Prioritization, Stakeholder Meeting | 91 | `AG_PLAN`, `AG_BACKLOG` |
+| Agile | `plan.js` | `agile/plan` | Product Backlog, Prioritization, Stakeholder Meeting | 91 | `AG_PLAN` |
 | Agile | `design.js` | `agile/design` | Wireframe, UI/UX Design, System Architecture | 110 | `AG_DESIGN` |
 | Agile | `develop.js` | `agile/develop` | Coding, Version Control, Collaboration | 112 | `AG_DEVELOP` |
 | Agile | `test.js` | `agile/test` | Unit Test, Bug Fixing, Quality Assurance | 96 | `AG_TEST` |
 | Agile | `deploy.js` | `agile/deploy` | Staging Environment, Release Build, Cloud Server | 99 | `AG_DEPLOY` |
 | Agile | `review.js` | `agile/review` | Demo, Feedback, Improvement Plan | 96 | `AG_REVIEW` |
-| Agile | `launch.js` | `agile/launch` | Release, User Adoption, Monitoring | 125 | `AG_LAUNCH`, `AG_RELEASE` |
-| RAD | `requirements-planning.js` | `rad/requirements-planning` | Problem Identification, Project Scope, User Requirements, Approval | 112 | `RAD_REQUIREMENT`, `RAD_PLANNING` |
+| Agile | `launch.js` | `agile/launch` | Release, User Adoption, Monitoring | 125 | `AG_LAUNCH` |
+| RAD | `requirements-planning.js` | `rad/requirements-planning` | Problem Identification, Project Scope, User Requirements, Approval | 112 | `RAD_REQUIREMENT` |
 | RAD | `user-design.js` | `rad/user-design` | UI/UX Design, Application Mockup, Database Design, System Architecture | 341 | `RAD_DESIGN` |
-| RAD | `construction.js` | `rad/construction` | Coding, Integration, Testing, User Feedback | 111 | `RAD_CONSTRUCTION`, `RAD_DEVELOPMENT` |
-| RAD | `cutover.js` | `rad/cutover` | Data Conversion, Final Testing, User Training, Go Live | 123 | `RAD_CUTOVER`, `RAD_IMPLEMENTATION` |
+| RAD | `construction.js` | `rad/construction` | Coding, Integration, Testing, User Feedback | 111 | `RAD_DEVELOPMENT` |
+| RAD | `cutover.js` | `rad/cutover` | Data Conversion, Final Testing, User Training, Go Live | 123 | `RAD_IMPLEMENTATION` |
 
-> Pencocokan nama mesh memakai pola kata (mis. `AG_PLAN`, `AG_PLANNING`,
-> `AG_BACKLOG` semuanya jatuh ke `agile/plan`). Kalau tahap tidak dikenali →
+> Pencocokan memakai pola kata, jadi variasi nama tetap kena: `WF_TEST`/`WF_TESTING` →
+> `testing`, `AG_PLAN`/`AG_BACKLOG` → `plan`, `AG_LAUNCH`/`AG_RELEASE` → `launch`,
+> `RAD_DEVELOPMENT`/`RAD_CONSTRUCTION` → `construction`. Kalau tahap tidak dikenali →
 > aplikasi membuka popup teks biasa (tanpa diorama). Isi/label diorama mengikuti
 > `docs/Rancangan_Isi_Model_3D_Tahapan_SDLC.docx`.
 
@@ -440,7 +441,7 @@ di `ar.html`.
 | Fungsi | Tugas |
 |---|---|
 | `detectMethod(meshName)` | Menebak metode dari nama mesh: `WF_…` → waterfall, `AG_…` → agile, `RAD_…` → rad |
-| `detectStageType(meshName)` | Menerjemahkan nama mesh jadi nama tahap (mis. `WF_TESTING` → `testing`) |
+| `detectStageType(meshName)` | Menerjemahkan nama mesh jadi nama tahap (mis. `WF_TEST` → `testing`) |
 | `stageKit()` | Menyediakan palet warna + semua alat gambar diorama (lihat tabel di bawah) |
 | `stageWrap(children)` | Membungkus diorama + alas dasar. **Statis** — tidak ada putar otomatis; model hanya bergerak lewat gesture pengguna |
 | `showStageModel(step, meshName)` | Titik masuk: tentukan sumber model (GLB / builder), tampilkan, pasang token pembatal |
@@ -457,9 +458,9 @@ di `ar.html`.
 | Dasar | `platform()` | Alas diorama navy + garis cyan (konsisten di semua tahap) |
 | Bingkai | `frame(x, y, z, rotY)`, `sub(frame, …)` | Mengelompokkan objek per zona/tema |
 | Bentuk dasar | `B(w,h,d,warna,x,y,z,opsi)`, `C(...)`, `Sp(...)` | Kotak, silinder, bola |
-| Detail | `part()`, `seg()`, `glow()` | Potongan kecil, garis, efek cahaya |
+| Detail | `part()`, `seg()`, `glow()`, `mv()` | Potongan kecil, garis, efek cahaya, animasi geser halus |
 | Label | `callout()`, `tag()` | Label teks + garis penunjuk ke objek |
-| Ikon siap pakai | `person`, `board`, `screen`, `doc`, `bubble`, `server`, `cloud`, `check`, `rocket`, `bug`, `arrow`, `mv` | Figur orang, papan, layar, dokumen, server, awan, centang, roket, bug, panah |
+| Ikon siap pakai | `person`, `board`, `screen`, `doc`, `bubble`, `server`, `cloud`, `check`, `rocket`, `bug`, `arrow` | Figur orang, papan, layar, dokumen, server, awan, centang, roket, bug, panah |
 
 Karena semua builder memakai kit ini, **warna, gaya label, dan ukuran platform selalu
 sama** di 16 tahap — tidak ada lagi kode helper yang diduplikasi 16 kali.
@@ -467,13 +468,16 @@ sama** di 16 tahap — tidak ada lagi kode helper yang diduplikasi 16 kali.
 ### Alur lengkap saat mesh diketuk
 
 ```
-Pengguna mengetuk mesh (mis. WF_TESTING)
+Pengguna mengetuk mesh (mis. WF_TEST)
       ↓
 ar.html: handleClick()
       ↓
-stepsData["WF_TESTING"]  ── ada? ── tidak ──▶ tidak terjadi apa-apa
-      ↓ ada
-showStageModel(step, "WF_TESTING")
+mesh "WF_TEST" ada di langkah DB?
+      ├── TIDAK ──▶ toast "⚠ Mesh ... belum ada di data admin" (selesai)
+      ↓ ADA
+highlightStage() + toast hijau "✓ <judul tahap>"
+      ↓
+showStageModel(step, "WF_TEST")
       ↓
 ┌─────────────────────────────────────────────────────────┐
 │ Prioritas sumber diorama:                               │
@@ -497,6 +501,9 @@ Tutup popup → tombol aksi muncul lagi (masih mode tahap)
 Kalau marker hilang dari kamera, model **tetap tampil** di posisi terakhir
 (`patchTargetFreeze()` di `ar.html`), sehingga pengguna bisa terus membaca/mendengar
 materi tanpa harus menahan kamera tepat di marker.
+
+Selama mode tahap aktif, ketukan pada mesh lain diabaikan — pengguna harus menekan
+**✕** dulu untuk kembali ke model utama, baru bisa memilih tahap lain.
 
 ### Cara menambah / mengubah model tahap
 
@@ -686,10 +693,14 @@ sdlc-ar/
 | ------------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | `public/learn/ar.html`                    | **File paling penting.** Inti logic AR (scene, gesture, popup, audio). 1433 baris. Edit dengan hati-hati. |
 | `public/learn/stage-models.js`            | **Hub** model 3D tahap + tombol aksi (525 baris); `stageKit()` (helper bersama) + registry `STAGE_BUILDERS` (key `<metode>/<tahap>`). Dimuat pertama dari 17 `<script>` berurutan di ar.html. |
-| `public/learn/stages/<metode>/<tahap>.js` (16 file) | Isi model tahap sesuai rancangan client — `rad/` (4), `agile/` (7), `waterfall/` (5), 89–343 baris; mendaftarkan diri ke `STAGE_BUILDERS["<metode>/<tahap>"]`. Wajib dimuat setelah hub, sebelum script inline. |
+| `public/learn/stages/<metode>/<tahap>.js` (16 file) | Isi model tahap sesuai rancangan client — `rad/` (4), `agile/` (7), `waterfall/` (5), 89–341 baris; mendaftarkan diri ke `STAGE_BUILDERS["<metode>/<tahap>"]`. Wajib dimuat setelah hub, sebelum script inline. |
 | `app/sw.ts`                               | Service worker — caching model 3D.                                                            |
 | `app/api/methods/by-slug/[slug]/route.ts` | API yang dipanggil oleh`ar.html` untuk load data.                                            |
 | `db/seed.ts`                              | Data awal (admin account + methods + steps).                                                   |
+
+> 📖 Penjelasan lengkap soal 16 file model tahap (fungsi tiap file, isi diorama,
+> helper `stageKit`, dan alur tampilnya) ada di bagian
+> **[Model 3D Tahapan (Stage Model)](#model-3d-tahapan-stage-model)** di atas.
 
 ---
 

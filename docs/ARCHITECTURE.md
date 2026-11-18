@@ -79,7 +79,7 @@ Agar tidak terjadi salah paham, berikut status bagian-bagian sistem saat ini:
 | --- | --- | --- |
 | `public/learn/ar.html` (1433 baris) | Halaman AR aktif: A-Frame 1.6.0 + MindAR 1.2.5 via CDN, Three.js via `AFRAME.THREE`; memuat 17 `<script>` berurutan (baris 348–364): `stage-models.js` → `stages/<metode>/<tahap>.js` (16 file) → script inline (baris 365–1431) | **Aktif (produksi)** |
 | `public/learn/stage-models.js` (525 baris) | **Hub** logika model 3D tahap (state, deteksi jenis tahap aware-metode `detectStageType()` + `detectMethod()`, kit bersama `stageKit()`, tombol aksi, `showStageModel()`) + registry kosong `STAGE_BUILDERS`; script klasik yang dimuat paling awal (dipisah dari ar.html) | **Aktif (produksi)** |
-| `public/learn/stages/<metode>/<tahap>.js` (16 file = RAD 4 + Agile 7 + Waterfall 5, total 1956 baris) | Isi model 3D tahap sesuai `docs/Rancangan_Isi_Model_3D_Tahapan_SDLC.docx` — folder `waterfall/` (requirements-analysis 89, design 129, development 99, testing 94, maintenance 126), `agile/` (plan 91, design 110, develop 112, test 96, deploy 100, review 96, launch 125), `rad/` (requirements-planning 112, user-design 343, construction 111, cutover 123 baris); mendaftarkan diri ke `STAGE_BUILDERS["<metode>/<tahap>"]`, memakai kit bersama `stageKit()` dari hub, dimuat setelah hub dan sebelum script inline | **Aktif (produksi)** |
+| `public/learn/stages/<metode>/<tahap>.js` (16 file = RAD 4 + Agile 7 + Waterfall 5, total 1952 baris) | Isi model 3D tahap sesuai `docs/Rancangan_Isi_Model_3D_Tahapan_SDLC.docx` — folder `waterfall/` (requirements-analysis 89, design 128, development 99, testing 94, maintenance 126), `agile/` (plan 91, design 110, develop 112, test 96, deploy 99, review 96, launch 125), `rad/` (requirements-planning 112, user-design 341, construction 111, cutover 123 baris); mendaftarkan diri ke `STAGE_BUILDERS["<metode>/<tahap>"]`, memakai kit bersama `stageKit()` dari hub, dimuat setelah hub dan sebelum script inline | **Aktif (produksi)** |
 | `app/api/*`, `app/admin/*`, `app/home/*` | API, dashboard admin, halaman publik | **Aktif (produksi)** |
 | `public/markers/targets.mind` | Seluruh marker dikompilasi menjadi satu berkas | **Aktif (produksi)** |
 | `components/ar/*` (ARViewer, StepPopup), `ar/`, `stores/ar-store.ts` | Komponen AR berbasis React | Tidak aktif (kode mati/sisa) |
@@ -375,7 +375,7 @@ Pengunggahan dilakukan admin dari `/admin/steps` (tombol **Upload Audio**). Brow
 ```
 ar.html (1433 baris)
 ├── <script src="/learn/stage-models.js">   → hub logika model 3D tahap (525 baris)
-├── <script src="/learn/stages/<metode>/<tahap>.js"> → 16 builder model tahap (RAD 4 + Agile 7 + Waterfall 5, 89–343 baris)
+├── <script src="/learn/stages/<metode>/<tahap>.js"> → 16 builder model tahap (RAD 4 + Agile 7 + Waterfall 5, 89–341 baris)
 ├── Overlay loading & status kamera
 ├── Scene A-Frame
 │   ├── Kamera
@@ -449,7 +449,7 @@ sdlc-ar/
 ├── public/
 │   ├── learn/ar.html         → HALAMAN AR AKTIF (1433 baris)
 │   ├── learn/stage-models.js → hub logika model 3D tahap (525 baris; stageKit + registry STAGE_BUILDERS)
-│   ├── learn/stages/         → 16 builder model tahap per tahap: waterfall/ (5) agile/ (7) rad/ (4), 89–343 baris
+│   ├── learn/stages/         → 16 builder model tahap per tahap: waterfall/ (5) agile/ (7) rad/ (4), 89–341 baris
 │   ├── markers/targets.mind  → seluruh marker dalam satu berkas
 │   ├── models/               → cadangan model GLB
 │   ├── audio/, images/       → aset statis lama (audio materi baru disimpan di Cloudinary)

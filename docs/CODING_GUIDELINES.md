@@ -149,7 +149,7 @@ class Button extends React.Component
 | `schemas/` | Definisi validasi Zod untuk setiap request |
 | `lib/` | Konfigurasi dan helper bersama (`auth.ts`, `api-error.ts`, `utils.ts`) |
 | `types/` | Definisi tipe (`next-auth.d.ts`) |
-| `public/` | Aset statis: halaman AR `learn/ar.html` (1433 baris), hub model tahap `learn/stage-models.js` (525 baris, berisi `stageKit()`), isi 16 model tahap `learn/stages/<metode>/<tahap>.js` (RAD 4 + Agile 7 + Waterfall 5, 89–343 baris), marker `markers/targets.mind`, cadangan `models/`, audio, Service Worker `sw.js` |
+| `public/` | Aset statis: halaman AR `learn/ar.html` (1433 baris), hub model tahap `learn/stage-models.js` (525 baris, berisi `stageKit()`), isi 16 model tahap `learn/stages/<metode>/<tahap>.js` (RAD 4 + Agile 7 + Waterfall 5, 89–341 baris), marker `markers/targets.mind`, cadangan `models/`, audio, Service Worker `sw.js` |
 | `docs/` | Dokumentasi proyek |
 | `ar/`, `components/ar/`, `stores/` | Kode AR React lama — **tidak aktif**, jangan dipakai sebagai referensi alur produksi |
 
