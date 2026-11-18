@@ -1,4 +1,4 @@
-# AR System Documentation
+﻿# AR System Documentation
 
 # Sistem Augmented Reality — AR SDLC Learning Media
 
@@ -32,7 +32,8 @@ Pembaca non-teknis cukup memahami **bagian 1–5 dan 14–16** (alur pengguna, m
 | **Stage Model (model tahap)** | Model 3D khusus satu tahapan yang menggantikan model utama di atas marker saat tahap itu diklik; bisa berupa file GLB dari database atau model bawaan dari kode. Popup materi baru terbuka setelah tombol **"📋 Lihat Penjelasan"** ditekan. |
 | **Tombol aksi (stage CTA)** | Tombol tetap di layar (`📋 Lihat Penjelasan` + `✕`) yang muncul saat mode tahap aktif; menjadi jalan membuka popup atau keluar dari mode tahap. |
 | **Raycaster** | Teknik menentukan objek 3D mana yang disentuh pengguna — bekerja seperti "sinar tak terlihat" dari titik sentuh layar ke arah model. |
-| **TTS (Text-to-Speech)** | Fitur browser yang mengubah teks menjadi suara, sehingga materi bisa "dibacakan" tanpa file audio. |
+| **TTS (Text-to-Speech)** | Fitur browser yang mengubah teks menjadi suara. Dipakai sebagai **cadangan** saat admin belum mengunggah file audio untuk tahap tersebut. |
+| **Cloudinary** | Layanan penyimpanan media di cloud; menyimpan file audio yang diunggah admin lewat panel admin. |
 | **Cache** | Penyimpanan sementara di browser. File yang sudah pernah diunduh tidak diunduh ulang, sehingga tampil lebih cepat. |
 
 ---
@@ -79,14 +80,50 @@ Sistem AR dibangun dengan teknologi berikut:
 | **Three.js** | via A-Frame | Rendering objek 3D, raycaster, dan perhitungan posisi. Diakses lewat `AFRAME.THREE`. |
 | **WebGL** | bawaan browser | Teknologi browser untuk menggambar grafis 3D. |
 | **Browser Camera API** | bawaan browser | Mengakses kamera perangkat (dengan izin pengguna). |
-| **SpeechSynthesis API** | bawaan browser | Text-to-Speech bahasa Indonesia untuk membacakan materi. |
+| **SpeechSynthesis API** | bawaan browser | Text-to-Speech bahasa Indonesia — dipakai bila audio belum diunggah admin. |
+| **Cloudinary** | REST API | Menyimpan file audio materi yang diunggah dari panel admin. |
 
 **Catatan penting:**
 
 - Halaman AR ditulis sebagai **file HTML statis** (`public/learn/ar.html`), **bukan** komponen React. Alasannya: A-Frame mengontrol DOM secara langsung dan bentrok dengan siklus hidup React (lihat `README.md` — bagian *Kenapa Menggunakan Static HTML*).
-- Logika model 3D tahap (stage model) dipecah jadi tiga tempat: elemen HTML + CSS di `ar.html`, logika inti di **`public/learn/stage-models.js`** (525 baris — termasuk kit bersama `stageKit()`), dan 16 model per tahap di **`public/learn/stages/<metode>/<tahap>.js`** (RAD 4 + Agile 7 + Waterfall 5 sesuai rancangan client). `ar.html` (1344 baris) memuat ke-17 file itu lewat `<script>` berurutan (baris 348–364) sebelum script inline-nya — lihat bagian 5.1.
+- Logika model 3D tahap (stage model) dipecah jadi tiga tempat: elemen HTML + CSS di `ar.html`, logika inti di **`public/learn/stage-models.js`** (525 baris — termasuk kit bersama `stageKit()`), dan 16 model per tahap di **`public/learn/stages/<metode>/<tahap>.js`** (RAD 4 + Agile 7 + Waterfall 5 sesuai rancangan client). `ar.html` (1433 baris) memuat ke-17 file itu lewat `<script>` berurutan (baris 348–364) sebelum script inline-nya — lihat bagian 5.1.
 - **React Three Fiber tidak dipakai** pada versi produksi. (Kode React AR lama masih ada di repo sebagai arsip, tetapi tidak aktif.)
 - MindAR dan A-Frame dimuat dari CDN — tidak perlu instalasi apapun di perangkat pengguna.
+
+## 2.1 Apa itu A-Frame?
+
+**A-Frame adalah kerangka kerja (framework) untuk membuat ruang 3D di browser hanya dengan menulis HTML.** Awalnya dibuat tim Mozilla, berjalan di atas **Three.js** (mesin grafis 3D), tetapi menyembunyikan kerumitan WebGL di balik tag HTML yang mudah dibaca.
+
+Analogi sederhana: kalau HTML biasa menyusun teks dengan `<p>` dan `<img>`, A-Frame menyusun ruang 3D dengan tag serupa:
+
+| Tag / atribut A-Frame | Artinya |
+|---|---|
+| `<a-scene>` | "Panggung" 3D — seluruh dunia 3D berada di dalamnya. |
+| `<a-camera>` | Mata pengguna (posisi & arah pandang). |
+| `<a-entity>` | Objek 3D apa pun (wadah kosong, lalu diisi bentuk lewat atribut). |
+| `<a-box>`, `<a-sphere>`, `<a-cylinder>`, `<a-torus>` | Bentuk dasar (primitif) siap pakai. |
+| `position`, `rotation`, `scale`, `geometry`, `material` | Atribut untuk mengatur letak, arah, ukuran, bentuk, dan warna objek — ditulis seperti atribut HTML biasa. |
+| `animation`, `gltf-model`, `visible` | Komponen siap pakai: animasi, memuat file GLB, dan menyembunyikan objek. |
+
+Contoh nyata dari proyek ini (`public/learn/ar.html`):
+
+```html
+<a-entity id="target-entity" mindar-image-target="targetIndex: 1">
+    <a-entity id="pivot">
+        <a-entity id="model-entity"></a-entity>
+        <a-entity id="stage-entity" visible="false"></a-entity>
+    </a-entity>
+</a-entity>
+```
+
+- `mindar-image-target` adalah **komponen buatan MindAR** yang dipasang ke A-Frame. Begitulah kedua teknologi bekerja sama: **MindAR** mengurus pelacakan marker lewat kamera, **A-Frame** mengurus menampilkan objek 3D-nya di atas marker.
+- `gltf-model` dipakai untuk menampilkan file GLB dari database; model tahap yang dibangun dari kode disusun dari `<a-entity>` bertumpuk (lihat `stageKit()` di `stage-models.js`).
+
+**Kenapa proyek ini memakai A-Frame?**
+
+1. **Tanpa proses build** — cukup file HTML + `<script>` CDN; cocok untuk halaman AR statis yang tidak boleh bentrok dengan React.
+2. **Deklaratif & mudah dirawat** — bentuk, posisi, dan warna model tahap bisa dibaca/diedit langsung sebagai atribut HTML.
+3. **Ekstensibel** — komponen pihak ketiga (MindAR, `gltf-model`, `animation`) tinggal dipasang sebagai atribut, tanpa mengubah mesin 3D-nya.
 
 ---
 
@@ -190,11 +227,11 @@ Fitur **Stage Model** membuat model 3D khusus tahap yang diklik **menggantikan m
 
 | Bagian | File | Isi |
 | --- | --- | --- |
-| Elemen & CSS | `public/learn/ar.html` (**1344 baris**) | `<div id="stage-cta">`, CSS `#stage-cta` / `.stage-cta-detail` / `.stage-cta-close`, entity `#stage-entity` |
+| Elemen & CSS | `public/learn/ar.html` (**1433 baris**) | `<div id="stage-cta">`, CSS `#stage-cta` / `.stage-cta-detail` / `.stage-cta-close`, entity `#stage-entity` |
 | Logika inti (**hub**) | `public/learn/stage-models.js` (**525 baris**) | state `stageToken` + `stageStep`, `showStageCTA()` / `hideStageCTA()` / `openDetailFromStage()`, `detectStageType()` (aware metode), `detectMethod()`, helper `stageEntity()` / `stageBox()` / `stageWrap()`, **`stageKit()`** (palet + `frame`/`part`/`callout`/`tag` + prop bersama `person`/`screen`/`board`/`doc`/`bubble`/`server`/`cloud`/`rocket`/`bug`/`check`/`arrow`), registry **`const STAGE_BUILDERS = {}` (kosong, key `<metode>/<tahap>`)**, `hideStageModel()`, `activateStageSwap()`, `fitStageGltf()`, `showStageModel()` |
 | Isi 16 model tahap | `public/learn/stages/<metode>/<tahap>.js` (**16 file** = RAD 4 + Agile 7 + Waterfall 5, 89–343 baris, total 1956 baris) | `STAGE_BUILDERS["<metode>/<tahap>"] = function () { ... }` — mis. `rad/cutover`, `agile/launch`, `waterfall/testing` (nama tahap = spesifikasi `docs/Rancangan_Isi_Model_3D_Tahapan_SDLC.docx`) |
 
-**Urutan `<script>` di ar.html (baris 348–364):** `stage-models.js` (hub) → 16 file builder `stages/waterfall/*.js` (baris 349–353) → `stages/agile/*.js` (baris 354–360) → `stages/rad/*.js` (baris 361–364) → script inline utama ar.html (baris 365–1342). Hub **wajib dimuat duluan** karena dialah yang mendeklarasikan `STAGE_BUILDERS`, dan semua **wajib sebelum** script inline — urutan ini yang menjamin 16 model siap dipakai `showStageModel()`. Seluruh fungsi di atas menjadi global sehingga `ar.html` bisa memanggilnya.
+**Urutan `<script>` di ar.html (baris 348–364):** `stage-models.js` (hub) → 16 file builder `stages/waterfall/*.js` (baris 349–353) → `stages/agile/*.js` (baris 354–360) → `stages/rad/*.js` (baris 361–364) → script inline utama ar.html (baris 365–1431). Hub **wajib dimuat duluan** karena dialah yang mendeklarasikan `STAGE_BUILDERS`, dan semua **wajib sebelum** script inline — urutan ini yang menjamin 16 model siap dipakai `showStageModel()`. Seluruh fungsi di atas menjadi global sehingga `ar.html` bisa memanggilnya.
 
 **Alur singkat:**
 
@@ -209,7 +246,7 @@ Tombol aksi tampil: "📋 Lihat Penjelasan" + "✕"
         ↓
 Tombol "📋 Lihat Penjelasan" diklik (openDetailFromStage)
         ↓
-Popup materi terbuka (teks materi + kontrol TTS, persis seperti sebelumnya)
+Popup materi terbuka (teks materi + kontrol audio: file admin / TTS cadangan)
         ↓
 Popup ditutup (✕ popup / backdrop) → popup hilang,
         model tahap TETAP tampil, tombol aksi muncul lagi
@@ -329,7 +366,7 @@ Saat mode tahap aktif, pengguna **tidak langsung** membuka popup. Layar menampil
 | No | Aksi pengguna | Hasil |
 | --- | --- | --- |
 | 1 | Klik mesh tahap | Model utama digantikan model 3D tahap + **tombol aksi muncul** (tombol utama **"📋 Lihat Penjelasan"** dan tombol **"✕"**) |
-| 2 | Klik **"📋 Lihat Penjelasan"** | **Barulah** popup detail terbuka (teks materi + kontrol TTS tetap persis seperti sebelumnya) |
+| 2 | Klik **"📋 Lihat Penjelasan"** | **Barulah** popup detail terbuka (teks materi + kontrol audio tetap persis seperti sebelumnya) |
 | 3 | Tutup popup (✕ popup / backdrop) | Popup hilang, **model tahap tetap tampil**, tombol aksi muncul lagi |
 | 4 | Klik tombol **"✕"** aksi | Keluar dari mode tahap → model utama tampil kembali |
 | 5 | Fallback: mesh tanpa model tahap (URL kosong & builder tak ditemukan) | Popup terbuka **langsung** tanpa tombol (perilaku lama) |
@@ -356,7 +393,7 @@ Saat mode tahap aktif, pengguna **tidak langsung** membuka popup. Layar menampil
 
 **Catatan file split:** `hideStageModel()` kini berada di `public/learn/stage-models.js`, sedangkan `openPopup()`, `closePopup()`, `handleClick()`, dan `targetLost()` tetap di `public/learn/ar.html`. Keduanya saling memanggil sebagai fungsi global karena `stage-models.js` dimuat sebelum script inline ar.html.
 
-> Detail teks materi dan kontrol TTS **tetap ada** — hanya waktu bukanya yang dipindah ke tombol. Tabel kontrol popup (Dengarkan / Jeda / Berhenti) tidak berubah.
+> Detail teks materi dan kontrol audio **tetap ada** — hanya waktu bukanya yang dipindah ke tombol. Tabel kontrol popup (Dengarkan / Jeda / Berhenti) tidak berubah.
 
 ---
 
@@ -584,29 +621,45 @@ Popup materi terbuka
       ↓
 Pengguna menekan tombol "▶ Dengarkan"
       ↓
-Sistem memeriksa ketersediaan audio
+Sistem memeriksa tahap ini punya audio_url?
       ↓
-┌────────────────────────────────────────────┐
-│ Mode 1 — File MP3 (audioUrl)               │
-│ Data sudah tersedia di database & form     │
-│ admin, TETAPI pemutaran MP3 belum aktif    │
-│ pada versi saat ini.                       │
-├────────────────────────────────────────────┤
-│ Mode 2 — Text-to-Speech (AKTIF)            │
-│ Browser membacakan teks materi dengan      │
-│ suara bahasa Indonesia (rate 0,9).         │
-└────────────────────────────────────────────┘
+┌──────────────────────────────────────────────┐
+│ Mode 1 — File audio unggahan admin (AKTIF)   │
+│ Admin mengunggah MP3 lewat panel admin       │
+│ (Steps → Upload Audio). File disimpan di     │
+│ Cloudinary, URL-nya masuk kolom audio_url.   │
+│ Browser memutar file itu langsung.          │
+├──────────────────────────────────────────────┤
+│ Mode 2 — Text-to-Speech (FALLBACK, AKTIF)    │
+│ Kalau audio_url kosong — atau file gagal     │
+│ dimuat — browser membacakan teks materi      │
+│ dengan suara bahasa Indonesia (rate 0,9).    │
+└──────────────────────────────────────────────┘
 ```
 
 **Kontrol audio di popup:**
 
 | Tombol | Fungsi |
 |---|---|
-| ▶ Dengarkan | Mulai membacakan materi |
+| ▶ Dengarkan | Memutar file audio admin, atau TTS bila audio belum diunggah |
 | ⏸ Jeda / Lanjutkan | Menjeda atau melanjutkan suara |
-| ■ Berhenti | Menghentikan suara |
+| ■ Berhenti | Menghentikan suara (file kembali ke awal) |
 
-Audio berhenti otomatis saat popup ditutup.
+Audio berhenti otomatis saat popup ditutup. Jika file audio gagal dimuat
+(misalnya URL salah atau file terhapus), sistem otomatis beralih ke TTS
+sehingga materi tetap bisa didengar.
+
+**Alur unggah audio oleh admin:**
+
+```
+Admin → /admin/steps → Edit step → "Upload Audio"
+      ↓
+GET /api/upload/audio  (butuh login; parameter upload Cloudinary)
+      ↓
+Browser → Cloudinary (unggah langsung, tidak lewat Vercel)
+      ↓
+URL audio → kolom audio_url step → "Save"
+```
 
 ---
 
@@ -672,7 +725,7 @@ Fitur AR dianggap selesai apabila:
 - Seluruh mesh tahapan dapat diklik.
 - Popup materi tampil sesuai mesh yang diklik (pada mode tahap: lewat tombol **📋 Lihat Penjelasan**).
 - Data materi sesuai database.
-- Suara (TTS) dapat diputar dan berhenti dengan benar.
+- Audio (file admin atau TTS cadangan) dapat diputar dan berhenti dengan benar.
 - Tidak terdapat error TypeScript.
 - Tidak terdapat error di console browser.
 

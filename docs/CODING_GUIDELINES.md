@@ -149,7 +149,7 @@ class Button extends React.Component
 | `schemas/` | Definisi validasi Zod untuk setiap request |
 | `lib/` | Konfigurasi dan helper bersama (`auth.ts`, `api-error.ts`, `utils.ts`) |
 | `types/` | Definisi tipe (`next-auth.d.ts`) |
-| `public/` | Aset statis: halaman AR `learn/ar.html` (1344 baris), hub model tahap `learn/stage-models.js` (525 baris, berisi `stageKit()`), isi 16 model tahap `learn/stages/<metode>/<tahap>.js` (RAD 4 + Agile 7 + Waterfall 5, 89–343 baris), marker `markers/targets.mind`, cadangan `models/`, audio, Service Worker `sw.js` |
+| `public/` | Aset statis: halaman AR `learn/ar.html` (1433 baris), hub model tahap `learn/stage-models.js` (525 baris, berisi `stageKit()`), isi 16 model tahap `learn/stages/<metode>/<tahap>.js` (RAD 4 + Agile 7 + Waterfall 5, 89–343 baris), marker `markers/targets.mind`, cadangan `models/`, audio, Service Worker `sw.js` |
 | `docs/` | Dokumentasi proyek |
 | `ar/`, `components/ar/`, `stores/` | Kode AR React lama — **tidak aktif**, jangan dipakai sebagai referensi alur produksi |
 
@@ -301,7 +301,7 @@ Jangan membiarkan Promise tanpa penanganan error.
 | --- | --- | --- |
 | Model GLB | Cloudflare R2 (`https://models.byvictech.site/models/*.glb`); `public/models/` hanya cadangan | Model besar dihosting terpisah agar tidak membebani aplikasi. |
 | Marker | `public/markers/` — seluruh marker dikompilasi jadi `targets.mind` | MindAR membutuhkan satu berkas gabungan berisi seluruh target. |
-| Audio | Kolom `audio_url` pada `method_steps` + folder `public/audio/` | Audio bersifat opsional dan dikelola per tahapan. |
+| Audio | Kolom `audio_url` pada `method_steps` — file diunggah admin dari `/admin/steps` ke Cloudinary (bukan disimpan di repo) | Audio opsional; jika kosong aplikasi memakai TTS browser |
 | File GLB tidak pernah disimpan di database | — | Database tetap kecil dan cepat; file binary bukan konten dinamis. |
 
 **Kenapa:** Aset statis dan konten dinamis punya siklus hidup berbeda; mencampurnya membuat aplikasi lambat dan rumit.

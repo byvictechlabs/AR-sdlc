@@ -203,7 +203,7 @@ Menyimpan seluruh tahapan beserta materinya. Kolom `mesh_name` adalah penghubung
 | description | text | Penjelasan singkat tahapan |
 | content | text | Isi materi pembelajaran (teks panjang) |
 | image_url | text | URL gambar pendukung (nullable) |
-| audio_url | text | URL audio narasi (nullable) |
+| audio_url | text | URL file audio narasi (hasil unggah admin ke Cloudinary). Nullable — jika kosong, aplikasi memakai TTS bawaan browser |
 | stage_model_url | text | URL GLB model 3D tahap (opsional, nullable) |
 | step_order | integer | Urutan tahapan |
 | created_at | integer | Timestamp (ms) |

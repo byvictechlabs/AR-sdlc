@@ -26,6 +26,7 @@ Pembaca non-teknis cukup memperhatikan **status tiap fase** (✅ selesai, 🟡 b
 | **WebAR** | Augmented Reality yang berjalan di browser web, tanpa instal aplikasi. |
 | **Marker** | Gambar cetak yang dipindai kamera agar objek 3D muncul di atasnya. |
 | **MindAR** | Library open-source untuk mengenali marker (image tracking) di browser. |
+| **A-Frame** | Kerangka kerja 3D berbasis tag HTML (berjalan di atas Three.js); dasar halaman AR `ar.html`. |
 | **Mesh** | Satu bagian permukaan objek 3D; setiap tahapan SDLC = satu mesh yang bisa diklik. |
 | **GLB** | Format file model 3D (satu file berisi objek, tekstur, dan nama mesh). |
 | **Raycaster** | Cara menentukan objek 3D mana yang disentuh pengguna, seperti "sinar tak terlihat" dari layar. |
@@ -133,7 +134,7 @@ Features
 - Login Admin (NextAuth v5)
 - Sidebar navigation
 - CRUD SDLC Methods
-- CRUD Method Steps (termasuk field materi dan URL audio MP3)
+- CRUD Method Steps (termasuk field materi dan audio per tahapan)
 - User Management
 - Zod validation
 - Toast notifications
@@ -149,7 +150,7 @@ Pages
 
 Catatan
 
-- Audio MP3 tidak punya halaman kelola terpisah; admin mengisi field Audio URL pada form tiap tahapan.
+- Audio tidak punya halaman kelola terpisah; admin mengunggah file audio (atau mengisi Audio URL) pada form tiap tahapan.
 - Admin dapat menambah metode baru lewat tombol Create, dengan syarat menyiapkan aset ekstra: model GLB baru di Cloudflare R2, kompilasi ulang file marker `targets.mind`, dan pengisian `mindTargetIndex`.
 
 Deliverables
@@ -263,12 +264,13 @@ Features
 
 - Detail Popup
 - Description
-- Audio TTS (Web Speech API bahasa Indonesia) — aktif dipakai
+- Audio materi per tahap — file unggahan admin (Cloudinary) diputar lebih dulu
+- Audio TTS (Web Speech API bahasa Indonesia) — cadangan bila audio belum diunggah
 - Tombol "Dengarkan" / berhenti
 
 Catatan
 
-Field audio MP3 (`audioUrl`) sudah tersedia di database dan form admin, tetapi pemutaran MP3 di halaman AR belum aktif — saat ini yang dipakai adalah TTS.
+Admin mengunggah audio dari form tahapan (tombol **Upload Audio** → tersimpan di Cloudinary). Jika sebuah tahap belum punya audio, halaman AR otomatis membacakan teks dengan TTS.
 
 Deliverables
 
@@ -428,5 +430,5 @@ Project dianggap selesai apabila:
 - API dapat diakses frontend.
 - WebAR menampilkan model dengan benar.
 - Seluruh tahapan dapat diklik.
-- Materi tampil sesuai data dan suara TTS berfungsi.
+- Materi tampil sesuai data dan audio (file admin / TTS) berfungsi.
 - Sistem berhasil dideploy ke production.

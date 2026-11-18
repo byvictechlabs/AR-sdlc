@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import {
   Layers,
   Plus,
@@ -8,6 +8,7 @@ import {
   Trash2,
   ArrowUpDown,
   BookOpen,
+  Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -61,11 +62,50 @@ interface Method {
 }
 
 const PAGE_SIZE = 10;
+const MAX_AUDIO_BYTES = 10 * 1024 * 1024; // 10 MB (batas gratis Cloudinary)
 
 async function fetchSteps(): Promise<Step[]> {
   const res = await fetch("/api/steps");
   if (!res.ok) throw new Error("Failed to fetch");
   return res.json();
+}
+
+// Unggah file audio langsung ke Cloudinary (bukan lewat server Vercel) memakai
+// parameter dari /api/upload/audio: unsigned preset bila tersedia, atau signed
+// upload sebagai cadangan. Hasilnya berupa URL publik.
+async function uploadAudioToCloudinary(file: File): Promise<string> {
+  const signatureRes = await fetch("/api/upload/audio");
+  if (!signatureRes.ok) {
+    const data = await signatureRes.json().catch(() => null);
+    throw new Error(data?.error || "Gagal menyiapkan unggahan audio");
+  }
+  const payload = await signatureRes.json();
+  if (!payload?.cloudName) {
+    throw new Error("Konfigurasi Cloudinary tidak lengkap");
+  }
+
+  const body = new FormData();
+  body.append("file", file);
+
+  if (payload.mode === "unsigned") {
+    body.append("upload_preset", payload.uploadPreset);
+  } else {
+    body.append("api_key", payload.apiKey);
+    body.append("timestamp", String(payload.timestamp));
+    body.append("folder", payload.folder);
+    body.append("allowed_formats", payload.allowedFormats);
+    body.append("signature", payload.signature);
+  }
+
+  const uploadRes = await fetch(
+    `https://api.cloudinary.com/v1_1/${payload.cloudName}/video/upload`,
+    { method: "POST", body }
+  );
+  const data = await uploadRes.json().catch(() => null);
+  if (!uploadRes.ok || !data?.secure_url) {
+    throw new Error(data?.error?.message || "Gagal mengunggah audio");
+  }
+  return data.secure_url as string;
 }
 
 export function StepsTable({
@@ -85,6 +125,8 @@ export function StepsTable({
   const [search, setSearch] = useState("");
   const [filterMethod, setFilterMethod] = useState("all");
   const [page, setPage] = useState(1);
+  const [uploadingAudio, setUploadingAudio] = useState(false);
+  const audioFileRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
     methodId: "",
@@ -155,6 +197,33 @@ export function StepsTable({
     });
     setErrors({});
     setDialogOpen(true);
+  }
+
+  async function handleAudioFile(file: File | undefined) {
+    if (!file) return;
+
+    if (!file.type.startsWith("audio/")) {
+      toast.error("File harus berupa audio (MP3, WAV, OGG, M4A).");
+      return;
+    }
+    if (file.size > MAX_AUDIO_BYTES) {
+      toast.error("Ukuran audio maksimal 10 MB.");
+      return;
+    }
+
+    setUploadingAudio(true);
+    try {
+      const url = await uploadAudioToCloudinary(file);
+      setForm((prev) => ({ ...prev, audioUrl: url }));
+      toast.success("Audio berhasil diunggah. Simpan untuk menerapkan.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Gagal mengunggah audio"
+      );
+    } finally {
+      setUploadingAudio(false);
+      if (audioFileRef.current) audioFileRef.current.value = "";
+    }
   }
 
   function validate(): boolean {
@@ -541,14 +610,49 @@ export function StepsTable({
                 />
               </FormField>
               <FormField label="Audio URL" htmlFor="audioUrl">
-                <Input
-                  id="audioUrl"
-                  value={form.audioUrl}
-                  onChange={(e) =>
-                    setForm({ ...form, audioUrl: e.target.value })
-                  }
-                  placeholder="https://example.com/audio.mp3"
-                />
+                <div className="space-y-2">
+                  <Input
+                    id="audioUrl"
+                    value={form.audioUrl}
+                    onChange={(e) =>
+                      setForm({ ...form, audioUrl: e.target.value })
+                    }
+                    placeholder="https://res.cloudinary.com/.../audio.mp3"
+                  />
+                  <div className="flex items-center gap-2">
+                    <input
+                      ref={audioFileRef}
+                      type="file"
+                      accept="audio/*"
+                      className="hidden"
+                      onChange={(e) => handleAudioFile(e.target.files?.[0])}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => audioFileRef.current?.click()}
+                      disabled={uploadingAudio}
+                    >
+                      <Upload className="mr-1 h-3.5 w-3.5" />
+                      {uploadingAudio ? "Mengunggah..." : "Upload Audio"}
+                    </Button>
+                    {form.audioUrl && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setForm({ ...form, audioUrl: "" })}
+                        disabled={uploadingAudio}
+                      >
+                        Hapus
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Kosongkan untuk memakai TTS (suara bawaan browser).
+                  </p>
+                </div>
               </FormField>
             </div>
             <FormField

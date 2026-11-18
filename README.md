@@ -1,8 +1,8 @@
-# AR SDLC Learning Media
+﻿# AR SDLC Learning Media
 
 > **Media Pembelajaran Interaktif Software Development Life Cycle (SDLC) menggunakan Augmented Reality**
 
-Aplikasi WebAR yang memungkinkan pengguna memindai marker AR untuk melihat model 3D SDLC, mengetuk bagian model untuk penjelasan detail, dan mendengar audio Text-to-Speech (TTS). Dibangun dengan Next.js, MindAR, A-Frame, dan Three.js.
+Aplikasi WebAR yang memungkinkan pengguna memindai marker AR untuk melihat model 3D SDLC, mengetuk bagian model untuk penjelasan detail, dan mendengar audio materi — file audio unggahan admin bila tersedia, atau Text-to-Speech (TTS) bawaan browser sebagai cadangan. Dibangun dengan Next.js, MindAR, A-Frame, dan Three.js.
 
 ---
 
@@ -19,6 +19,7 @@ Aplikasi WebAR yang memungkinkan pengguna memindai marker AR untuk melihat model
 - [Peta Lengkap File &amp; Hubungan Antar-File](#peta-lengkap-file--hubungan-antar-file)
 - [Peta Tampilan ke File](#peta-tampilan-ke-file)
 - [Peta Fungsi ke File](#peta-fungsi-ke-file)
+- [Glosarium Istilah](#glosarium-istilah)
 - [Environment Variables](#environment-variables)
 - [Instalasi &amp; Setup](#instalasi--setup)
 - [Deploy ke Vercel](#deploy-ke-vercel)
@@ -225,7 +226,7 @@ File GLB (3D Model)              Database (method_steps)
   │         │     → model tahap    │
   │         │     → tombol aksi    │
   │         │     → popup detail   │
-  │         │     → TTS audio      │
+  │         │     → audio materi   │
   │         └──────────────────────┘
   │
 /home/panduan ──── Halaman panduan
@@ -242,7 +243,7 @@ File GLB (3D Model)              Database (method_steps)
 
 ### File: `public/learn/ar.html`
 
-File ini adalah **inti aplikasi AR** (1344 baris) yang berisi sebagian besar logic AR. Logika model 3D tahap (stage model) dipecah jadi dua pendukung: **`public/learn/stage-models.js`** (525 baris, hub + `stageKit()` + registry) dan **`public/learn/stages/<metode>/<tahap>.js`** (16 file sesuai rancangan client: `rad/` 4 tahap, `agile/` 7 tahap, `waterfall/` 5 tahap). Ke-17 file itu dimuat lewat `<script>` berurutan (baris 348–364) sebelum script inline ar.html (baris 365–1342).
+File ini adalah **inti aplikasi AR** (1433 baris) yang berisi sebagian besar logic AR. Logika model 3D tahap (stage model) dipecah jadi dua pendukung: **`public/learn/stage-models.js`** (525 baris, hub + `stageKit()` + registry) dan **`public/learn/stages/<metode>/<tahap>.js`** (16 file sesuai rancangan client: `rad/` 4 tahap, `agile/` 7 tahap, `waterfall/` 5 tahap). Ke-17 file itu dimuat lewat `<script>` berurutan (baris 348–364) sebelum script inline ar.html (baris 365–1431).
 
 #### Komponen Utama
 
@@ -256,7 +257,7 @@ File ini adalah **inti aplikasi AR** (1344 baris) yang berisi sebagian besar log
 | **Loading Overlay**      | Progress bar saat download model                                                        |
 | **Start Screen**         | Layar "Mulai Kamera" sebelum AR aktif                                                   |
 | **Popup Detail**         | Modal yang muncul saat mesh diklik                                                      |
-| **TTS (Text-to-Speech)** | Web Speech API — bacakan penjelasan tahap                                              |
+| **Audio**                | File audio unggahan admin (Cloudinary) — kalau kosong, fallback ke Text-to-Speech browser |
 
 #### Flow Inisialisasi
 
@@ -297,7 +298,7 @@ resolveMeshName(object)
   → showStageModel(step, name) → boolean
         true  → model tahap tampil + tombol aksi ("📋 Lihat Penjelasan" + "✕")
         false → popup terbuka langsung (tanpa model tahap)
-  → klik "📋 Lihat Penjelasan" → popup + TTS
+  → klik "📋 Lihat Penjelasan" → popup + audio materi (file admin / TTS)
 ```
 
 ---
@@ -426,7 +427,7 @@ sdlc-ar/
 │
 ├── public/
 │   ├── learn/
-│   │   ├── ar.html               # ⭐ AR experience (static HTML, 1344 baris)
+│   │   ├── ar.html               # ⭐ AR experience (static HTML, 1433 baris)
 │   │   ├── stage-models.js       # hub model 3D tahap + tombol aksi (525 baris)
 │   │   └── stages/               # 16 model per tahap (rancangan client): waterfall/ (5) agile/ (7) rad/ (4)
 │   │       ├── waterfall/        # requirements-analysis, design, development, testing, maintenance
@@ -465,7 +466,7 @@ sdlc-ar/
 
 | File                                        | Penjelasan                                                                                     |
 | ------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `public/learn/ar.html`                    | **File paling penting.** Inti logic AR (scene, gesture, popup, TTS). 1344 baris. Edit dengan hati-hati. |
+| `public/learn/ar.html`                    | **File paling penting.** Inti logic AR (scene, gesture, popup, audio). 1433 baris. Edit dengan hati-hati. |
 | `public/learn/stage-models.js`            | **Hub** model 3D tahap + tombol aksi (525 baris); `stageKit()` (helper bersama) + registry `STAGE_BUILDERS` (key `<metode>/<tahap>`). Dimuat pertama dari 17 `<script>` berurutan di ar.html. |
 | `public/learn/stages/<metode>/<tahap>.js` (16 file) | Isi model tahap sesuai rancangan client — `rad/` (4), `agile/` (7), `waterfall/` (5), 89–343 baris; mendaftarkan diri ke `STAGE_BUILDERS["<metode>/<tahap>"]`. Wajib dimuat setelah hub, sebelum script inline. |
 | `app/sw.ts`                               | Service worker — caching model 3D.                                                            |
@@ -506,7 +507,7 @@ tempat kodenya berada.**
 | 2 | Menu utama (2 kartu: Mulai Belajar & Panduan) | `/home` | `app/home/page.tsx` |
 | 3 | Daftar metode (kartu Waterfall/Agile/RAD + dialog unduh model) | `/home/mulai-belajar` | `app/home/mulai-belajar/page.tsx`, `app/home/mulai-belajar/MethodCard.tsx`, `components/ModelPreloader.tsx` |
 | 4 | Halaman panduan (6 langkah pemakaian) | `/home/panduan` | `app/home/panduan/page.tsx` |
-| 5 | **Halaman AR** — scan marker, model 3D, gesture, klik tahap, popup materi + TTS, tombol aksi | `/learn/ar.html?method=...` (dibuka via `/learn/<slug>`) | `public/learn/ar.html` (scene, raycaster, gesture, popup, tombol aksi) |
+| 5 | **Halaman AR** — scan marker, model 3D, gesture, klik tahap, popup materi + audio (file admin / TTS), tombol aksi | `/learn/ar.html?method=...` (dibuka via `/learn/<slug>`) | `public/learn/ar.html` (scene, raycaster, gesture, popup, tombol aksi) |
 | 6 | Redirect metode → halaman AR | `/learn/<slug>` | `app/learn/[slug]/page.tsx` |
 | 7 | **Model 3D per tahap** (diorama pengganti model utama saat tahap diklik) | — (dimuat oleh ar.html) | `public/learn/stage-models.js` (hub + `stageKit()` + deteksi tipe aware metode) dan `public/learn/stages/<metode>/<tahap>.js` (16 file sesuai `docs/Rancangan_Isi_Model_3D_Tahapan_SDLC.docx`: rad requirements-planning/user-design/construction/cutover, agile plan/design/develop/test/deploy/review/launch, waterfall requirements-analysis/design/development/testing/maintenance) |
 
@@ -590,7 +591,7 @@ Semua fungsi di bawah berada di **`public/learn/ar.html`** kecuali ditandai lain
 | Gesture putar / zoom / geser | `setupGestures()` — **kode milik user, jangan diubah tanpa izin** |
 | Tombol "⟲ Reset" tampilan | `resetView()` |
 | Popup materi (buka / tutup) | `openPopup()` / `closePopup()` |
-| TTS "▶ Dengarkan" materi | `toggleAudio()` / `stopAudio()` (`window.speechSynthesis`) |
+| Audio materi (file admin / TTS cadangan) | `toggleAudio()` / `stopAudio()` / `playAudioFile()` / `playTTS()` — file dari `audioUrl`, fallback `window.speechSynthesis` |
 | Tombol aksi model tahap ("📋 Lihat Penjelasan" / "✕") | `showStageCTA()` / `hideStageCTA()` / `openDetailFromStage()` di `public/learn/stage-models.js` |
 
 ### 5. Caching & Service Worker
@@ -600,6 +601,59 @@ Semua fungsi di bawah berada di **`public/learn/ar.html`** kecuali ditandai lain
 | Sumber Service Worker (precache app shell + cache GLB 30 hari) | `app/sw.ts` (Serwist) — di-build ke `public/sw.js` |
 | Pendaftaran SW di halaman AR | `public/learn/ar.html` — `navigator.serviceWorker.register("/sw.js")` |
 | Cache model AR (`ar-models-v1`) | `public/learn/ar.html` — `caches.open(...)` di `loadFromDB()` + `loadModelFromCache()` |
+
+---
+
+## Glosarium Istilah
+
+Istilah teknis yang dipakai di dokumentasi ini, dijelaskan sederhana. Penjelasan
+lebih dalam soal A-Frame ada di [`docs/AR_SYSTEM.md`](docs/AR_SYSTEM.md) bagian
+*2.1 Apa itu A-Frame?*, dan istilah lain di [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+
+### AR & 3D
+
+| Istilah | Penjelasan sederhana |
+|---------|----------------------|
+| **AR (Augmented Reality)** | Menampilkan objek digital (3D) di atas dunia nyata lewat kamera. |
+| **WebAR** | AR yang berjalan di browser web — tanpa instal aplikasi, cukup buka link. |
+| **Marker** | Gambar cetak yang dipindai kamera; saat dikenali, model 3D muncul di atasnya. |
+| **Image Tracking** | Teknologi mengenali & mengikuti posisi marker terus-menerus lewat kamera. |
+| **MindAR** | Pustaka open-source untuk image tracking di browser — "jantung" sistem AR aplikasi ini (versi 1.2.5). |
+| **A-Frame** | Kerangka kerja untuk membuat ruang 3D di browser cukup dengan tag HTML (`<a-scene>`, `<a-entity>`, dst.), berjalan di atas Three.js; dasar halaman `ar.html` (versi 1.6.0, dari CDN). |
+| **Three.js** | Pustaka grafis 3D di balik layar A-Frame (rendering, kamera, posisi objek). |
+| **WebGL** | Teknologi bawaan browser untuk menggambar grafis 3D. |
+| **Mesh** | Satu bagian permukaan objek 3D. Di aplikasi ini **setiap tahapan SDLC = satu mesh** yang bisa diketuk. |
+| **GLB (.glb)** | Format file model 3D — satu file berisi bentuk, tekstur, dan nama mesh (mirip JPG untuk foto). |
+| **Stage Model** | Model 3D khusus satu tahapan yang menggantikan model utama di atas marker saat tahap diketuk. |
+| **Raycaster** | Teknik menentukan objek 3D mana yang disentuh — seperti "sinar tak terlihat" dari titik ketukan. |
+| **Gesture** | Interaksi sentuh: putar (drag), zoom (cubit), geser (pan). |
+| **Audio materi** | File audio per tahap yang diunggah admin dari panel admin (disimpan di Cloudinary). |
+| **TTS (Text-to-Speech)** | Fitur browser mengubah teks jadi suara (tombol "▶ Dengarkan") — dipakai otomatis bila audio belum diunggah. |
+| **Cloudinary** | Layanan penyimpanan media di cloud tempat file audio admin disimpan. |
+
+### Web, Data & Umum
+
+| Istilah | Penjelasan sederhana |
+|---------|----------------------|
+| **Next.js** | Kerangka kerja web yang menyediakan halaman (frontend) sekaligus API (backend). |
+| **React** | Pustaka untuk menyusun antarmuka halaman web dari komponen. |
+| **TypeScript** | JavaScript ditambah pemeriksaan tipe data, agar kesalahan terdeteksi lebih awal. |
+| **API / Endpoint** | Alamat layanan data (contoh `/api/methods`) yang mengembalikan data berformat JSON. |
+| **Database** | Tempat penyimpanan data terstruktur (mirip tabel Excel); proyek ini memakai Turso. |
+| **Turso** | Layanan database SQLite berbasis cloud untuk data produksi. |
+| **Drizzle ORM** | Pustaka agar kode TypeScript bisa membaca/menulis database tanpa menulis query SQL manual. |
+| **Migration** | Berkas perubahan struktur database agar tabel selalu sesuai kode. |
+| **Seed** | Data awal yang dimasukkan ke database (admin + metode + tahapan). |
+| **Zod** | Pustaka validasi: memeriksa format data yang masuk sebelum diproses. |
+| **Slug** | Potongan alamat web yang mudah dibaca, contoh `/learn/waterfall`. |
+| **CRUD** | Create, Read, Update, Delete — tambah, lihat, ubah, hapus data. |
+| **ISR / Revalidate** | Menyimpan hasil data sementara di server, lalu menyegarkan saat ada perubahan. |
+| **Service Worker** | Program kecil di browser yang menyimpan aset (mis. GLB) agar tidak diunduh ulang. |
+| **Cache** | Penyimpanan sementara di browser/server agar tampilan lebih cepat. |
+| **CDN** | Server publik cepat untuk mengambil pustaka/file (MindAR, A-Frame). |
+| **Cloudflare R2** | Penyimpanan file di cloud tempat model GLB di-host. |
+| **Middleware** | Kode yang berjalan sebelum halaman dilayani — di sini menjaga halaman admin wajib login. |
+| **JWT** | Token digital penanda sesi login pengguna. |
 
 ---
 
@@ -619,6 +673,12 @@ AUTH_URL=https://your-domain.vercel.app
 # Optional: Local SQLite for development
 # TURSO_DATABASE_URL=file:local.db
 # TURSO_AUTH_TOKEN=
+
+# Cloudinary (unggah audio materi dari panel admin)
+# Format: cloudinary://<api_key>:<api_secret>@<cloud_name>
+CLOUDINARY_URL=cloudinary://123456789:abcdef@your-cloud-name
+# Opsional: upload preset unsigned (dipakai lebih dulu bila diisi)
+CLOUDINARY_UPLOAD_PRESET=
 ```
 
 ### Cara Mendapatkan Values
@@ -629,6 +689,8 @@ AUTH_URL=https://your-domain.vercel.app
 | `TURSO_AUTH_TOKEN`   | Turso dashboard → create auth token                        |
 | `AUTH_SECRET`        | Generate:`openssl rand -base64 32`                        |
 | `AUTH_URL`           | URL production (misal:`https://ar-sdlc.vercel.app`)       |
+| `CLOUDINARY_URL`     | Cloudinary dashboard → *API Keys* → **API environment variable** (format `cloudinary://key:secret@cloud`) |
+| `CLOUDINARY_UPLOAD_PRESET` | Opsional — nama upload preset **unsigned** (Cloudinary → Settings → Upload → Upload presets). Dipakai bila API key restricted. |
 
 ---
 
@@ -770,6 +832,8 @@ TURSO_DATABASE_URL = libsql://...
 TURSO_AUTH_TOKEN   = eyJ...
 AUTH_SECRET        = random-32-char-secret
 AUTH_URL           = https://ar-sdlc.vercel.app
+CLOUDINARY_URL     = cloudinary://<api_key>:<api_secret>@<cloud_name>
+CLOUDINARY_UPLOAD_PRESET = <nama-preset-unsigned>   # opsional
 ```
 
 > ⚠️ **Tanpa `AUTH_URL`, NextAuth akan gagal redirect setelah login (CredentialsSignin error).**
@@ -821,6 +885,12 @@ AUTH_URL           = https://ar-sdlc.vercel.app
 | ------- | ------------------------ | ------------------------- |
 | `GET` | `/api/dashboard/stats` | Statistik admin dashboard |
 
+### Upload Audio
+
+| Method  | Endpoint             | Deskripsi                                                                 |
+| ------- | -------------------- | ------------------------------------------------------------------------- |
+| `GET` | `/api/upload/audio` | Menyiapkan parameter upload Cloudinary untuk admin (wajib login). Mendukung **unsigned preset** (`CLOUDINARY_UPLOAD_PRESET`) atau signed upload (`CLOUDINARY_URL`). Browser lalu mengunggah file **langsung ke Cloudinary**, bukan lewat server Vercel. |
+
 > ⭐ `/api/methods/by-slug/[slug]` — Endpoint khusus yang dipanggil oleh `ar.html` untuk mendapatkan konfigurasi metode + semua steps. Response format:
 >
 > ```json
@@ -852,7 +922,7 @@ AUTH_URL           = https://ar-sdlc.vercel.app
 | Halaman            | Fitur                                                                              |
 | ------------------ | ---------------------------------------------------------------------------------- |
 | `/admin/methods` | CRUD metode SDLC, search, filter status, edit modelPath/markerPath/mindTargetIndex |
-| `/admin/steps`   | CRUD tahapan, search, filter by method, edit meshName/title/description/content/**stageModelUrl** (field *"Stage Model URL (opsional — GLB 3D tahap di R2)"*) |
+| `/admin/steps`   | CRUD tahapan, search, filter by method, edit meshName/title/description/content/**audioUrl** (bisa **Upload Audio** ke Cloudinary, atau isi URL manual), **stageModelUrl** (field *"Stage Model URL (opsional — GLB 3D tahap di R2)"*) |
 | `/admin/users`   | CRUD users, assign roles (admin/super_admin)                                       |
 
 ### Edit Dialog

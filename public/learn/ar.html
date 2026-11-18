@@ -1190,7 +1190,10 @@
         }
 
         // ================= AUDIO / TTS =================
+        // Sumber audio: kalau admin mengunggah audio untuk tahap ini (audioUrl),
+        // file itulah yang diputar. Kalau kosong / gagal dimuat → TTS browser.
         let utterance = null;
+        let audioEl = null;
 
         function getIndonesianVoice() {
             const voices = window.speechSynthesis.getVoices();
@@ -1198,21 +1201,12 @@
                 voices.find((v) => v.lang.startsWith("ms")) || null;
         }
 
-        function toggleAudio() {
-            const btn = document.getElementById("btn-audio");
-            const stopBtn = document.getElementById("btn-stop");
+        function resetAudioButtons() {
+            document.getElementById("btn-audio").textContent = "▶ Dengarkan";
+            document.getElementById("btn-stop").classList.add("hidden");
+        }
 
-            if (utterance && window.speechSynthesis.speaking) {
-                if (window.speechSynthesis.paused) {
-                    window.speechSynthesis.resume();
-                    btn.textContent = "⏸ Jeda";
-                } else {
-                    window.speechSynthesis.pause();
-                    btn.textContent = "▶ Lanjutkan";
-                }
-                return;
-            }
-
+        function playTTS() {
             if (!currentStep) return;
             const text = [currentStep.title, currentStep.description, currentStep.content]
                 .filter(Boolean).join(". ");
@@ -1224,23 +1218,85 @@
             const voice = getIndonesianVoice();
             if (voice) utterance.voice = voice;
             utterance.onend = () => {
-                btn.textContent = "▶ Dengarkan";
-                stopBtn.classList.add("hidden");
+                resetAudioButtons();
+                utterance = null;
             };
             utterance.onerror = () => {
-                btn.textContent = "▶ Dengarkan";
-                stopBtn.classList.add("hidden");
+                resetAudioButtons();
+                utterance = null;
             };
             window.speechSynthesis.speak(utterance);
-            btn.textContent = "⏸ Jeda";
-            stopBtn.classList.remove("hidden");
+            document.getElementById("btn-audio").textContent = "⏸ Jeda";
+            document.getElementById("btn-stop").classList.remove("hidden");
+        }
+
+        function playAudioFile(url) {
+            audioEl = new Audio(url);
+            audioEl.preload = "auto";
+            audioEl.onended = () => {
+                audioEl = null;
+                resetAudioButtons();
+            };
+            // File audio tidak bisa dimuat (URL salah / hilang) → fallback TTS
+            audioEl.onerror = () => {
+                console.warn("[Audio] Gagal memuat file audio, fallback ke TTS:", url);
+                audioEl = null;
+                playTTS();
+            };
+            audioEl.play().then(() => {
+                document.getElementById("btn-audio").textContent = "⏸ Jeda";
+                document.getElementById("btn-stop").classList.remove("hidden");
+            }).catch((e) => {
+                console.warn("[Audio] Putar file gagal, fallback ke TTS:", e);
+                audioEl = null;
+                playTTS();
+            });
+        }
+
+        function toggleAudio() {
+            const btn = document.getElementById("btn-audio");
+            if (!currentStep) return;
+
+            // Mode 1 — file audio unggahan admin
+            if (audioEl) {
+                if (audioEl.paused) {
+                    audioEl.play();
+                    btn.textContent = "⏸ Jeda";
+                } else {
+                    audioEl.pause();
+                    btn.textContent = "▶ Lanjutkan";
+                }
+                return;
+            }
+
+            // Mode 2 — TTS
+            if (utterance && window.speechSynthesis.speaking) {
+                if (window.speechSynthesis.paused) {
+                    window.speechSynthesis.resume();
+                    btn.textContent = "⏸ Jeda";
+                } else {
+                    window.speechSynthesis.pause();
+                    btn.textContent = "▶ Lanjutkan";
+                }
+                return;
+            }
+
+            if (currentStep.audioUrl) {
+                playAudioFile(currentStep.audioUrl);
+            } else {
+                playTTS();
+            }
         }
 
         function stopAudio() {
             if ("speechSynthesis" in window) window.speechSynthesis.cancel();
             utterance = null;
-            document.getElementById("btn-audio").textContent = "▶ Dengarkan";
-            document.getElementById("btn-stop").classList.add("hidden");
+            if (audioEl) {
+                audioEl.pause();
+                audioEl.currentTime = 0;
+                audioEl = null;
+            }
+            resetAudioButtons();
         }
 
         // ================= INIT =================

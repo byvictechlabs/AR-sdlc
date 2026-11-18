@@ -24,11 +24,13 @@ Pembaca non-teknis cukup membaca bagian 1 sampai 9 (gambaran umum, pengguna, alu
 | **Marker** | Gambar cetak yang dipindai kamera. Saat marker dikenali, objek 3D muncul di atasnya. |
 | **Image Tracking** | Teknologi mengenali dan melacak gambar marker secara terus-menerus lewat kamera. |
 | **MindAR** | Library open-source yang melakukan image tracking di browser; jantung sistem AR aplikasi ini. |
+| **A-Frame** | Kerangka kerja untuk membuat ruang 3D di browser cukup dengan tag HTML (`<a-scene>`, `<a-entity>`, dst.), berjalan di atas Three.js; dasar halaman AR `ar.html`. |
 | **Mesh** | Satu bagian permukaan objek 3D. Setiap tahapan SDLC berupa satu mesh yang bisa diklik terpisah. |
 | **GLB** | Format file model 3D (satu file berisi seluruh objek, tekstur, dan nama mesh). |
 | **Stage Model (model tahap)** | Model 3D khusus satu tahapan yang menggantikan model utama saat tahap itu diklik; sumbernya file GLB dari admin atau model bawaan dari kode. Popup baru terbuka setelah tombol "📋 Lihat Penjelasan" ditekan. |
 | **Raycaster** | Cara komputer menentukan objek 3D mana yang disentuh pengguna, bekerja seperti "sinar tak terlihat" dari titik sentuh layar. |
-| **TTS (Text-to-Speech)** | Fitur browser yang mengubah teks menjadi suara, sehingga materi bisa dibacakan tanpa file audio. |
+| **TTS (Text-to-Speech)** | Fitur browser yang mengubah teks menjadi suara; dipakai sebagai cadangan bila audio tahap belum diunggah. |
+| **Cloudinary** | Layanan penyimpanan media di cloud; menyimpan file audio yang diunggah admin. |
 | **Cache** | Penyimpanan sementara di browser. File yang sudah pernah diunduh tidak diunduh ulang sehingga lebih cepat. |
 | **API** | Layanan data berbentuk alamat web yang mengembalikan informasi dalam format JSON, dipakai aplikasi untuk membaca/menyimpan data. |
 | **CRUD** | Singkatan dari Create, Read, Update, Delete — yaitu kegiatan menambah, melihat, mengubah, dan menghapus data. |
@@ -65,7 +67,7 @@ Konten pembelajaran dikelola melalui dashboard admin sehingga materi dapat diper
 ## Secondary Goals
 
 - Menyediakan dashboard admin untuk mengelola materi.
-- Menyediakan audio pembelajaran (suara TTS aktif; file MP3 disiapkan untuk tahap berikutnya).
+- Menyediakan audio pembelajaran per tahap: file audio diunggah admin lewat panel admin (disimpan di Cloudinary); jika belum ada, otomatis memakai TTS bawaan browser.
 - Menjadi dasar pengembangan fitur AI Assistant dan Quiz pada versi berikutnya.
 
 ---
@@ -79,8 +81,8 @@ Konten pembelajaran dikelola melalui dashboard admin sehingga materi dapat diper
 - Visualisasi 3D metode SDLC
 - Objek 3D interaktif (mesh dapat diklik)
 - Detail tahapan (popup materi)
-- Audio TTS — membacakan teks materi (aktif)
-- Pengelolaan URL audio MP3 per tahapan di dashboard admin (data tersedia)
+- Audio materi — file audio per tahap diunggah admin (Cloudinary); jika belum ada, otomatis TTS bawaan browser
+- Unggah audio per tahapan langsung dari dashboard admin
 - Dashboard Admin
 - CRUD Metode dan CRUD Tahapan
 
@@ -92,7 +94,6 @@ Konten pembelajaran dikelola melalui dashboard admin sehingga materi dapat diper
 - Progress Learning
 - Analytics
 - Multiplayer
-- Pemutaran file audio MP3 di halaman AR (field `audioUrl` sudah tersedia, pemutaran menyusul)
 
 ---
 
@@ -134,7 +135,7 @@ Pengguna belajar **tidak perlu login**. Hak akses:
 - Melakukan scan marker
 - Berinteraksi dengan objek 3D
 - Membaca materi
-- Mendengarkan audio TTS
+- Mendengarkan audio materi (file admin atau TTS)
 
 ## 2. Admin
 
@@ -144,7 +145,7 @@ Hak akses (login menggunakan akun admin, NextAuth Credentials):
 - Mengelola metode
 - Mengelola tahapan
 - Mengelola materi
-- Mengelola URL audio MP3 per tahapan
+- Mengelola audio per tahapan (unggah ke Cloudinary / isi URL)
 - Mengelola akun admin lain
 
 ---
@@ -184,7 +185,7 @@ User menekan tombol "📋 Lihat Penjelasan"
         ↓
 Popup materi tampil
         ↓
-User membaca materi dan menekan "Dengarkan" (suara TTS)
+User membaca materi dan menekan "Dengarkan" (file audio admin, atau TTS bila belum ada)
 ```
 
 ---
@@ -202,7 +203,7 @@ Kelola Tahapan
         ↓
 Tambah / Edit / Hapus materi
         ↓
-Isi URL audio MP3 (opsional)
+Isi audio (unggah file / URL, opsional)
         ↓
 Data tersimpan dan tampil di aplikasi pengguna
 ```
@@ -284,7 +285,7 @@ Popup berisi:
 - Nama tahapan
 - Deskripsi singkat
 - Isi materi penjelasan
-- Tombol "Dengarkan" (memutar suara TTS) dan tombol berhenti
+- Tombol "Dengarkan" (memutar file audio admin atau TTS) dan tombol berhenti
 - Tombol tutup (✕)
 
 ---
@@ -316,13 +317,18 @@ Status: **implementasi awal selesai**.
 
 ## Audio
 
-### Mode aktif: Text-to-Speech (TTS)
+### Mode utama: file audio unggahan admin
 
-Aplikasi membacakan teks materi menggunakan fitur TTS bawaan browser (Web Speech API, bahasa Indonesia). Pengguna menekan tombol **"Dengarkan"** pada popup materi.
+Admin dapat mengunggah file audio untuk setiap tahapan dari form Kelola Tahapan
+(tombol **Upload Audio**). File disimpan di **Cloudinary**, dan URL-nya tersimpan
+di kolom `audio_url`. Saat pengguna menekan **"Dengarkan"**, file audio itulah
+yang diputar.
 
-### Mode persiapan: Audio MP3
+### Mode cadangan: Text-to-Speech (TTS)
 
-Field audio MP3 (`audioUrl`) sudah tersedia di database dan pada form admin per tahapan, **tetapi belum diputar di halaman AR**. Pemutaran MP3 merupakan rencana pengembangan berikutnya.
+Jika tahap belum punya file audio — atau file gagal dimuat — aplikasi membacakan
+teks materi memakai TTS bawaan browser (Web Speech API, bahasa Indonesia).
+Dengan begitu materi selalu bisa didengar tanpa perlu menyiapkan file audio.
 
 ---
 
@@ -335,7 +341,8 @@ Dashboard terdiri dari:
 - Kelola Tahapan (`/admin/steps`)
 - Manajemen Akun Admin (`/admin/users`)
 
-Catatan: **tidak ada menu "Kelola Audio" terpisah**. Audio MP3 diisi per tahapan melalui form Kelola Tahapan (field Audio URL).
+Catatan: **tidak ada menu "Kelola Audio" terpisah**. Audio diunggah per tahapan
+melalui form Kelola Tahapan (tombol Upload Audio atau isi Audio URL manual).
 
 ---
 
@@ -373,7 +380,8 @@ Field:
 - Deskripsi
 - Isi materi
 - Image URL
-- Audio URL (MP3)
+- Audio — tombol **Upload Audio** (unggah file ke Cloudinary) atau isi Audio URL manual
+- Stage Model URL (opsional)
 - Step Order
 
 Mesh Name **dapat diedit** oleh admin, tetapi **wajib sama persis** dengan nama mesh di dalam file GLB. Aturan penamaan: huruf besar, angka, dan underscore saja (contoh: `WF_REQUIREMENTS`). Jika nama tidak cocok, materi tahapan tersebut tidak akan muncul saat mesh diklik.
@@ -384,11 +392,12 @@ Mesh Name **dapat diedit** oleh admin, tetapi **wajib sama persis** dengan nama 
 
 Admin dapat:
 
-- Mengisi URL audio MP3 (field Audio URL pada form tahapan)
-- Mengganti URL audio MP3
-- Menghapus URL audio MP3
+- Mengunggah file audio (MP3/WAV/OGG/M4A) lewat tombol **Upload Audio** — file langsung disimpan ke Cloudinary
+- Mengisi atau mengganti Audio URL secara manual
+- Menghapus audio sebuah tahapan (kosongkan field)
 
-Saat ini URL tersebut sudah tersimpan di database, tetapi belum diputar di halaman AR. Yang aktif dipakai adalah TTS.
+Audio yang sudah diunggah langsung diputar di halaman AR. Jika sebuah tahap belum
+punya audio, aplikasi otomatis memakai TTS.
 
 ---
 
@@ -525,7 +534,7 @@ Build dan Deployment
 - Setiap mesh pada model memiliki nama unik.
 - Nama mesh pada database harus sama persis dengan nama mesh di file GLB, ditulis huruf besar dengan underscore.
 - Konten materi dapat diperbarui kapan saja tanpa mengubah aplikasi.
-- Audio MP3 bersifat opsional; yang aktif saat ini adalah Browser Text-to-Speech.
+- Audio bersifat opsional: file unggahan admin (Cloudinary) diputar bila ada; jika kosong dipakai Browser Text-to-Speech.
 - Hanya admin yang login; pengguna belajar tidak memerlukan akun.
 - Fitur AI Assistant, Quiz, progress belajar, dan multi-marker belum diimplementasi (masa depan).
 
@@ -564,6 +573,5 @@ Versi berikutnya akan menambahkan:
 - Learning Progress
 - Achievement
 - Dashboard Analytics
-- Pemutaran audio MP3 di halaman AR
 
 Arsitektur saat ini sudah dirancang agar seluruh fitur tersebut dapat ditambahkan tanpa mengubah struktur utama aplikasi.

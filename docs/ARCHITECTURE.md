@@ -1,4 +1,4 @@
-# System Architecture
+﻿# System Architecture
 
 # AR SDLC Learning Media
 
@@ -77,7 +77,7 @@ Agar tidak terjadi salah paham, berikut status bagian-bagian sistem saat ini:
 
 | Bagian kode | Fungsi | Status |
 | --- | --- | --- |
-| `public/learn/ar.html` (1344 baris) | Halaman AR aktif: A-Frame 1.6.0 + MindAR 1.2.5 via CDN, Three.js via `AFRAME.THREE`; memuat 17 `<script>` berurutan (baris 348–364): `stage-models.js` → `stages/<metode>/<tahap>.js` (16 file) → script inline (baris 365–1342) | **Aktif (produksi)** |
+| `public/learn/ar.html` (1433 baris) | Halaman AR aktif: A-Frame 1.6.0 + MindAR 1.2.5 via CDN, Three.js via `AFRAME.THREE`; memuat 17 `<script>` berurutan (baris 348–364): `stage-models.js` → `stages/<metode>/<tahap>.js` (16 file) → script inline (baris 365–1431) | **Aktif (produksi)** |
 | `public/learn/stage-models.js` (525 baris) | **Hub** logika model 3D tahap (state, deteksi jenis tahap aware-metode `detectStageType()` + `detectMethod()`, kit bersama `stageKit()`, tombol aksi, `showStageModel()`) + registry kosong `STAGE_BUILDERS`; script klasik yang dimuat paling awal (dipisah dari ar.html) | **Aktif (produksi)** |
 | `public/learn/stages/<metode>/<tahap>.js` (16 file = RAD 4 + Agile 7 + Waterfall 5, total 1956 baris) | Isi model 3D tahap sesuai `docs/Rancangan_Isi_Model_3D_Tahapan_SDLC.docx` — folder `waterfall/` (requirements-analysis 89, design 129, development 99, testing 94, maintenance 126), `agile/` (plan 91, design 110, develop 112, test 96, deploy 100, review 96, launch 125), `rad/` (requirements-planning 112, user-design 343, construction 111, cutover 123 baris); mendaftarkan diri ke `STAGE_BUILDERS["<metode>/<tahap>"]`, memakai kit bersama `stageKit()` dari hub, dimuat setelah hub dan sebelum script inline | **Aktif (produksi)** |
 | `app/api/*`, `app/admin/*`, `app/home/*` | API, dashboard admin, halaman publik | **Aktif (produksi)** |
@@ -109,6 +109,7 @@ Halaman Next.js              Halaman Admin                   Halaman AR statis
                                      Next.js Route Handler (API)
                                      /api/methods · /api/steps
                                      /api/users  · /api/auth
+                                     /api/upload/audio (tanda tangan Cloudinary)
                                                |
                               +----------------+----------------+
                               |                                 |
@@ -116,6 +117,7 @@ Halaman Next.js              Halaman Admin                   Halaman AR statis
                               |                                 |
                         Turso (SQLite)                  Model GLB di Cloudflare R2
                                                         Marker di public/markers/
+                                                        Audio materi di Cloudinary
 ```
 
 ---
@@ -266,7 +268,7 @@ Model 3D **tidak pernah disimpan di database**.
 | Cadangan model GLB | `public/models/` | Salinan cadangan, bukan sumber utama |
 | Marker (berkas gabungan) | `public/markers/targets.mind` | Seluruh gambar marker dikompilasi menjadi **satu** berkas `.mind` |
 | Gambar marker sumber | `public/markers/*.png` | Berkas sumber sebelum dikompilasi |
-| Audio | Kolom `audio_url` pada tabel `tahapan` + folder `public/audio/` | Opsional |
+| Audio | Kolom `audio_url` pada tabel `tahapan` (file diunggah admin ke Cloudinary) | Opsional — jika kosong dipakai TTS browser |
 
 Alasan pemisahan ini:
 
@@ -359,8 +361,10 @@ Daftar metode pada halaman `/home/mulai-belajar` juga tidak mengambil database s
 
 1. Pengguna menekan salah satu tahapan.
 2. Sistem memeriksa kolom `audio_url` pada tahapan tersebut.
-3. Jika **ada** audio → putar file MP3.
-4. Jika **tidak ada** → browser membacakan teks memakai `SpeechSynthesis API` (teks-ke-suara), sehingga materi tetap dapat didengar meski audio belum diunggah.
+3. Jika **ada** audio (diunggah admin lewat panel admin, disimpan di **Cloudinary**) → putar file audio itu.
+4. Jika **tidak ada** — atau file gagal dimuat — browser membacakan teks memakai `SpeechSynthesis API` (teks-ke-suara), sehingga materi tetap dapat didengar meski audio belum diunggah.
+
+Pengunggahan dilakukan admin dari `/admin/steps` (tombol **Upload Audio**). Browser meminta parameter upload ke `GET /api/upload/audio` (unsigned preset bila tersedia, atau signed upload), lalu mengunggah file **langsung ke Cloudinary** (tidak melewati server Vercel), dan URL hasilnya disimpan pada kolom `audio_url`.
 
 ---
 
@@ -369,7 +373,7 @@ Daftar metode pada halaman `/home/mulai-belajar` juga tidak mengambil database s
 ## Halaman AR statis (`public/learn/ar.html`)
 
 ```
-ar.html (1344 baris)
+ar.html (1433 baris)
 ├── <script src="/learn/stage-models.js">   → hub logika model 3D tahap (525 baris)
 ├── <script src="/learn/stages/<metode>/<tahap>.js"> → 16 builder model tahap (RAD 4 + Agile 7 + Waterfall 5, 89–343 baris)
 ├── Overlay loading & status kamera
@@ -443,12 +447,12 @@ sdlc-ar/
 ├── types/                    → deklarasi tipe (next-auth.d.ts)
 │
 ├── public/
-│   ├── learn/ar.html         → HALAMAN AR AKTIF (1344 baris)
+│   ├── learn/ar.html         → HALAMAN AR AKTIF (1433 baris)
 │   ├── learn/stage-models.js → hub logika model 3D tahap (525 baris; stageKit + registry STAGE_BUILDERS)
 │   ├── learn/stages/         → 16 builder model tahap per tahap: waterfall/ (5) agile/ (7) rad/ (4), 89–343 baris
 │   ├── markers/targets.mind  → seluruh marker dalam satu berkas
 │   ├── models/               → cadangan model GLB
-│   ├── audio/, images/
+│   ├── audio/, images/       → aset statis lama (audio materi baru disimpan di Cloudinary)
 │   ├── sw.js                 → Service Worker hasil build
 │   └── manifest.json
 │
@@ -481,7 +485,7 @@ Model 3D tidak pernah masuk database; konten pembelajaran tidak pernah disematka
 | Penjaga halaman | `middleware.ts` memeriksa login untuk seluruh route `/admin/*`; pengguna yang belum login diarahkan ke `/admin/login` |
 | Validasi input | Zod pada setiap request API |
 
-**Known issue (diketahui, belum ditangani):** endpoint API untuk methods, steps, dan users saat ini **belum memeriksa status login**; perlindungan utama baru ada di lapisan halaman admin (`middleware`). Pemeriksaan autentikasi di API menjadi rencana perbaikan.
+**Known issue (diketahui, belum ditangani):** endpoint API untuk methods, steps, dan users saat ini **belum memeriksa status login**; perlindungan utama baru ada di lapisan halaman admin (`middleware`). Pemeriksaan autentikasi di API menjadi rencana perbaikan. Khusus `GET /api/upload/audio` (tanda tangan unggah audio) sudah memeriksa sesi login karena dipakai untuk mengunggah file ke Cloudinary.
 
 ---
 

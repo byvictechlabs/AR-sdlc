@@ -23,9 +23,10 @@ Dokumen ini ditujukan untuk tim desain dan tim pengembang agar hasil kerja serag
 |---|---|
 | **WebAR** | Augmented Reality yang berjalan di browser web, tanpa instal aplikasi. |
 | **Marker** | Gambar cetak yang dipindai kamera agar objek 3D muncul di atasnya. |
+| **A-Frame** | Kerangka kerja 3D berbasis tag HTML (berjalan di atas Three.js); dasar halaman AR `ar.html`. |
 | **Mesh** | Satu bagian permukaan objek 3D; setiap tahapan SDLC = satu mesh yang bisa diklik. |
 | **GLB** | Format file model 3D. |
-| **TTS (Text-to-Speech)** | Fitur browser yang mengubah teks menjadi suara untuk membacakan materi. |
+| **TTS (Text-to-Speech)** | Fitur browser yang mengubah teks menjadi suara; dipakai sebagai cadangan bila audio tahap belum diunggah. |
 | **Cache** | Penyimpanan sementara di browser agar file yang sudah pernah diunduh tidak diunduh ulang. |
 | **Toast Notification** | Notifikasi kecil yang muncul sementara di sudut layar sebagai umpan balik aksi. |
 | **Skeleton Loading** | Pola abu-abu berkedip yang meniru bentuk konten sebagai penanda data sedang dimuat. |
@@ -443,7 +444,7 @@ Jenis
 
 # Halaman Pengguna (Sisi Belajar)
 
-Bagian ini menjelaskan gaya visual halaman yang dilihat pengguna belajar (bukan dashboard admin), mulai dari splash screen, menu, pilih metode, sampai halaman AR tempat marker dipindai dan mesh model 3D diklik untuk membuka materi beserta suara TTS. Model 3D (GLB) diunduh sekali lalu disimpan di cache browser.
+Bagian ini menjelaskan gaya visual halaman yang dilihat pengguna belajar (bukan dashboard admin), mulai dari splash screen, menu, pilih metode, sampai halaman AR tempat marker dipindai dan mesh model 3D diklik untuk membuka materi beserta audio (file admin atau TTS). Model 3D (GLB) diunduh sekali lalu disimpan di cache browser.
 
 ## Splash Screen (`/`)
 
