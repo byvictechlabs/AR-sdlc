@@ -14,6 +14,7 @@ Aplikasi WebAR yang memungkinkan pengguna memindai marker AR untuk melihat model
 - [Database](#database)
 - [Alur Pengguna](#alur-pengguna)
 - [AR Engine Detail](#ar-engine-detail)
+- [Model 3D Tahapan (Stage Model)](#model-3d-tahapan-stage-model)
 - [Caching Strategy](#caching-strategy)
 - [Struktur Proyek](#struktur-proyek)
 - [Peta Lengkap File &amp; Hubungan Antar-File](#peta-lengkap-file--hubungan-antar-file)
@@ -303,6 +304,221 @@ resolveMeshName(object)
 
 ---
 
+## Model 3D Tahapan (Stage Model)
+
+### Apa itu Stage Model?
+
+Saat pengguna memindai marker, yang muncul pertama adalah **model utama** — satu file
+GLB per metode (`waterfall1.glb`, `agile-new.glb`, `RAD.glb`) yang berisi seluruh tahapan
+metode itu.
+
+Ketika salah satu bagian model diketuk, aplikasi **menyembunyikan model utama** dan
+menampilkan **diorama khusus untuk tahap tersebut** di atas marker. Diorama itulah yang
+disebut **stage model**.
+
+```
+Model utama (1 GLB per metode)          Stage model (1 diorama per tahap)
+┌───────────────────────────┐           ┌───────────────────────────┐
+│  WF_REQUIREMENTS          │  diketuk  │  meja wawancara +          │
+│  WF_DESIGN                │  ───────▶ │  timbangan studi kelayakan │
+│  WF_IMPLEMENTATION        │           │  + dokumen SRS             │
+│  WF_TESTING               │           │                           │
+│  WF_MAINTENANCE           │           │  (dibangun dari kode,      │
+└───────────────────────────┘           │   bukan file GLB)          │
+                                        └───────────────────────────┘
+```
+
+### Kenapa filenya dipisah-pisah?
+
+| Alasan | Penjelasan |
+|---|---|
+| **Mudah diedit** | Mau ubah diorama "Cutover"? Cukup buka `stages/rad/cutover.js`. Tahap lain tidak tersentuh. |
+| **`ar.html` tidak membengkak** | Semua kode 16 diorama kalau digabung akan jadi ±1.900 baris tambahan di `ar.html`. |
+| **Tidak ada duplikasi** | Bagian yang berulang (palet warna, platform, callout, ikon) disatukan di `stageKit()` — dipakai semua tahap. |
+| **Satu tahap = satu file** | Memudahkan pengecekan/review per tahap sesuai dokumen rancangan klien. |
+| **Bisa beda per metode** | Waterfall, Agile, dan RAD punya tahapan yang tidak sama, jadi tidak bisa dipaksa satu file generik. |
+
+### Struktur file
+
+```
+public/learn/
+├── stage-models.js                  ← HUB / mesin bersama (525 baris)
+│     • detectMethod()   → WF_ / AG_ / RAD_
+│     • detectStageType()→ nama tahap dari nama mesh
+│     • stageKit()       → alat gambar diorama (dipakai 16 file)
+│     • showStageModel() → memilih sumber model & menampilkannya
+│     • hideStageModel() → kembali ke model utama
+│     • tombol aksi "📋 Lihat Penjelasan" / "✕"
+│
+└── stages/
+    ├── waterfall/                  5 file (sesuai tahapan Waterfall)
+    │   ├── requirements-analysis.js
+    │   ├── design.js
+    │   ├── development.js
+    │   ├── testing.js
+    │   └── maintenance.js
+    │
+    ├── agile/                      7 file (sesuai tahapan Agile)
+    │   ├── plan.js
+    │   ├── design.js
+    │   ├── develop.js
+    │   ├── test.js
+    │   ├── deploy.js
+    │   ├── review.js
+    │   └── launch.js
+    │
+    └── rad/                        4 file (sesuai tahapan RAD)
+        ├── requirements-planning.js
+        ├── user-design.js
+        ├── construction.js
+        └── cutover.js
+```
+
+**Total: 1 hub + 16 builder = 17 file**, dimuat `ar.html` lewat `<script>` berurutan
+di baris **348–364** — semuanya **harus** dimuat sebelum script inline utama
+(baris **365–1431**). Urutannya penting: hub mendeklarasikan `STAGE_BUILDERS`,
+lalu 16 file mengisi registry itu.
+
+### Daftar 16 file builder
+
+Setiap file mendaftarkan dirinya dengan **key `<metode>/<tahap>`**:
+
+| Metode | File | Key builder | Diorama berisi (label callout) | Baris | Mesh pemicu (contoh) |
+|---|---|---|---|---|---|
+| Waterfall | `requirements-analysis.js` | `waterfall/requirements-analysis` | Requirement Gathering, Feasibility Study, SRS Document | 89 | `WF_REQUIREMENTS` |
+| Waterfall | `design.js` | `waterfall/design` | System Architecture, Database Design, UI Design | 128 | `WF_DESIGN` |
+| Waterfall | `development.js` | `waterfall/development` | Coding, Module Development, Integration | 99 | `WF_IMPLEMENTATION`, `WF_DEVELOPMENT` |
+| Waterfall | `testing.js` | `waterfall/testing` | Test Case, Bug Reporting, System Testing | 94 | `WF_TESTING` |
+| Waterfall | `maintenance.js` | `waterfall/maintenance` | Bug Fixing, Updates, User Support | 126 | `WF_MAINTENANCE` |
+| Agile | `plan.js` | `agile/plan` | Product Backlog, Prioritization, Stakeholder Meeting | 91 | `AG_PLAN`, `AG_BACKLOG` |
+| Agile | `design.js` | `agile/design` | Wireframe, UI/UX Design, System Architecture | 110 | `AG_DESIGN` |
+| Agile | `develop.js` | `agile/develop` | Coding, Version Control, Collaboration | 112 | `AG_DEVELOP` |
+| Agile | `test.js` | `agile/test` | Unit Test, Bug Fixing, Quality Assurance | 96 | `AG_TEST` |
+| Agile | `deploy.js` | `agile/deploy` | Staging Environment, Release Build, Cloud Server | 99 | `AG_DEPLOY` |
+| Agile | `review.js` | `agile/review` | Demo, Feedback, Improvement Plan | 96 | `AG_REVIEW` |
+| Agile | `launch.js` | `agile/launch` | Release, User Adoption, Monitoring | 125 | `AG_LAUNCH`, `AG_RELEASE` |
+| RAD | `requirements-planning.js` | `rad/requirements-planning` | Problem Identification, Project Scope, User Requirements, Approval | 112 | `RAD_REQUIREMENT`, `RAD_PLANNING` |
+| RAD | `user-design.js` | `rad/user-design` | UI/UX Design, Application Mockup, Database Design, System Architecture | 341 | `RAD_DESIGN` |
+| RAD | `construction.js` | `rad/construction` | Coding, Integration, Testing, User Feedback | 111 | `RAD_CONSTRUCTION`, `RAD_DEVELOPMENT` |
+| RAD | `cutover.js` | `rad/cutover` | Data Conversion, Final Testing, User Training, Go Live | 123 | `RAD_CUTOVER`, `RAD_IMPLEMENTATION` |
+
+> Pencocokan nama mesh memakai pola kata (mis. `AG_PLAN`, `AG_PLANNING`,
+> `AG_BACKLOG` semuanya jatuh ke `agile/plan`). Kalau tahap tidak dikenali →
+> aplikasi membuka popup teks biasa (tanpa diorama). Isi/label diorama mengikuti
+> `docs/Rancangan_Isi_Model_3D_Tahapan_SDLC.docx`.
+
+### Anatomi satu file builder
+
+Semua builder memakai pola yang sama — inilah kenapa menambah/mengubah tahap tidak
+rumit:
+
+```javascript
+// public/learn/stages/waterfall/requirements-analysis.js
+STAGE_BUILDERS["waterfall/requirements-analysis"] = function () {
+    var K = stageKit();                       // 1. ambil "kotak alat" bersama
+    var items = K.items, B = K.B, W = K.W;    //    items = daftar objek diorama
+
+    K.platform();                             // 2. alas diorama (ukuran sama semua tahap)
+
+    var A = K.frame(-0.35, -0.36, -0.16, 8);  // 3. satu zona/tema = satu frame
+    K.board(A, 0.2, 0.15, { htxt: "NOTES" });          //    isi zona: papan catatan
+    K.person(A, -0.15, 0.05, { point: true });          //    orang yang sedang presentasi
+    K.callout("Requirement Gathering",                  //    label + garis penunjuk
+        -0.35, 0.12, -0.20, [-0.42, 0.02, -0.16]);
+        //  ^ teks label   ^ posisi label (x,y,z)   ^ ujung panah
+
+    return stageWrap(items);                  // 4. bungkus + platform dasar
+};
+```
+
+Intinya: **satu file = satu fungsi** yang mengembalikan kumpulan objek 3D A-Frame.
+Tidak ada logika AR di sini — semua urusan marker, gesture, raycast, dan popup tetap
+di `ar.html`.
+
+### Mesin bersama: `stage-models.js`
+
+| Fungsi | Tugas |
+|---|---|
+| `detectMethod(meshName)` | Menebak metode dari nama mesh: `WF_…` → waterfall, `AG_…` → agile, `RAD_…` → rad |
+| `detectStageType(meshName)` | Menerjemahkan nama mesh jadi nama tahap (mis. `WF_TESTING` → `testing`) |
+| `stageKit()` | Menyediakan palet warna + semua alat gambar diorama (lihat tabel di bawah) |
+| `stageWrap(children)` | Membungkus diorama + alas dasar. **Statis** — tidak ada putar otomatis; model hanya bergerak lewat gesture pengguna |
+| `showStageModel(step, meshName)` | Titik masuk: tentukan sumber model (GLB / builder), tampilkan, pasang token pembatal |
+| `hideStageModel()` | Hapus isi diorama, tampilkan lagi model utama, sembunyikan tombol aksi |
+| `activateStageSwap()` | Sembunyikan model utama, tampilkan `#stage-entity`, kembalikan sudut pandang |
+| `fitStageGltf(el)` | Menyesuaikan skala/posisi GLB tahap agar ukurannya standar |
+| `showStageCTA()` / `hideStageCTA()` | Menampilkan/menyembunyikan tombol "📋 Lihat Penjelasan" + "✕" |
+| `openDetailFromStage()` | Membuka popup materi dari tombol aksi |
+
+#### Alat gambar di `stageKit()`
+
+| Kelompok | Fungsi | Kegunaan |
+|---|---|---|
+| Dasar | `platform()` | Alas diorama navy + garis cyan (konsisten di semua tahap) |
+| Bingkai | `frame(x, y, z, rotY)`, `sub(frame, …)` | Mengelompokkan objek per zona/tema |
+| Bentuk dasar | `B(w,h,d,warna,x,y,z,opsi)`, `C(...)`, `Sp(...)` | Kotak, silinder, bola |
+| Detail | `part()`, `seg()`, `glow()` | Potongan kecil, garis, efek cahaya |
+| Label | `callout()`, `tag()` | Label teks + garis penunjuk ke objek |
+| Ikon siap pakai | `person`, `board`, `screen`, `doc`, `bubble`, `server`, `cloud`, `check`, `rocket`, `bug`, `arrow`, `mv` | Figur orang, papan, layar, dokumen, server, awan, centang, roket, bug, panah |
+
+Karena semua builder memakai kit ini, **warna, gaya label, dan ukuran platform selalu
+sama** di 16 tahap — tidak ada lagi kode helper yang diduplikasi 16 kali.
+
+### Alur lengkap saat mesh diketuk
+
+```
+Pengguna mengetuk mesh (mis. WF_TESTING)
+      ↓
+ar.html: handleClick()
+      ↓
+stepsData["WF_TESTING"]  ── ada? ── tidak ──▶ tidak terjadi apa-apa
+      ↓ ada
+showStageModel(step, "WF_TESTING")
+      ↓
+┌─────────────────────────────────────────────────────────┐
+│ Prioritas sumber diorama:                               │
+│  1. step.stageModelUrl  → GLB khusus tahap dari R2      │
+│  2. STAGE_BUILDERS["waterfall/testing"] → file builder  │
+│  3. keduanya tidak ada → popup teks langsung (tanpa     │
+│     diorama)                                             │
+└─────────────────────────────────────────────────────────┘
+      ↓
+Model utama disembunyikan  →  diorama tahap tampil di atas marker
+      ↓
+Tombol aksi muncul:  [📋 Lihat Penjelasan]  [✕]
+      ↓                                    ↓
+Klik "Lihat Penjelasan"                 Klik "✕"
+      ↓                                    ↓
+Popup materi + audio (file admin/TTS)   Kembali ke model utama
+      ↓
+Tutup popup → tombol aksi muncul lagi (masih mode tahap)
+```
+
+Kalau marker hilang dari kamera, model **tetap tampil** di posisi terakhir
+(`patchTargetFreeze()` di `ar.html`), sehingga pengguna bisa terus membaca/mendengar
+materi tanpa harus menahan kamera tepat di marker.
+
+### Cara menambah / mengubah model tahap
+
+| Ingin… | Yang dilakukan |
+|---|---|
+| **Mengubah tampilan** satu tahap | Edit file di `stages/<metode>/<tahap>.js`, lalu refresh. Tidak perlu menyentuh `ar.html`. |
+| **Menambah tahap baru** | 1) Buat file baru di folder metode yang sesuai; 2) daftarkan `STAGE_BUILDERS["<metode>/<tahap>"]`; 3) tambahkan `<script src>` di `ar.html` (baris 348–364); 4) tambahkan data tahap di admin dengan `meshName` yang sama dengan mesh GLB. |
+| **Memakai GLB khusus** | Isi kolom **Stage Model URL** pada tahap di `/admin/steps`. GLB otomatis di-fit. |
+| **Mengganti nama file/key** | Wajib sekaligus: ubah `STAGE_BUILDERS[...]`, `<script src>` di `ar.html`, dan `detectStageType()` bila nama tahap berubah. |
+
+### Aturan penting
+
+- **Jangan mengubah nama key** (`<metode>/<tahap>`) tanpa memperbarui
+  `detectStageType()` dan tag `<script>` — kalau tidak, diorama tidak akan muncul.
+- **Tanpa animasi putar otomatis.** Diorama harus diam sampai pengguna menggeser/zoom
+  sendiri (model dibuat statis lewat `stageWrap`).
+- **Jangan menaruh logika AR** (marker, gesture, raycast, popup) di file builder —
+  file builder hanya berisi bentuk dan label.
+- **Satu tahap satu file.** Jangan menggabungkan beberapa tahap dalam satu file.
+
+---
+
 ## Caching Strategy
 
 ### Service Worker (`app/sw.ts`)
@@ -386,6 +602,8 @@ sdlc-ar/
 │       ├── steps/
 │       │   ├── route.ts
 │       │   └── [id]/route.ts
+│       ├── upload/
+│       │   └── audio/route.ts    # parameter upload audio ke Cloudinary (wajib login)
 │       └── users/
 │           ├── route.ts
 │           └── [id]/route.ts
